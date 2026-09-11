@@ -1,0 +1,59 @@
+/* Layout and interactions for the five-day trading prototype. */
+#viewport{display:block;position:relative;overflow:hidden}
+#game{position:absolute;left:50%;top:50%;transform-origin:center}
+#pile{isolation:isolate}
+.item:hover,#sourceItems .item:hover,#inspectItems .item:hover{z-index:200000!important}
+.item{transition:filter .12s;touch-action:none}
+.item.dragging{z-index:300000!important}
+#effects{position:absolute;inset:0;pointer-events:none;z-index:75}
+#modal{z-index:90}
+.modal-card{max-height:760px;overflow:auto}
+#receptionAction{right:60px;bottom:40px;width:330px}
+#receptionAction button{width:100%;font-size:17px}
+#speech{right:80px;top:44px;width:360px;min-height:225px}
+.notice{width:375px;bottom:20px;font-size:14px}
+#stepHint{max-width:480px;font-size:14px}
+footer nav{gap:6px}footer nav button{padding:10px;font-size:14px}
+.rep{cursor:pointer;min-width:100px}.rep b{font-size:16px}
+.work-heading{gap:12px}.work-heading h1{font-size:20px}
+#workProgress{max-width:165px}.ad-sort-button{min-width:160px;font-size:14px}
+#shelves{gap:12px}.shelf-box{width:158px}.shelf-box .category-icon{left:62px}
+#table{top:262px;bottom:36px}
+.sorting #pile{right:10px}.sorting.has-note #pile{right:315px}
+.sorting #checklist{display:block;top:12px;bottom:10px;width:285px;max-width:none;overflow:auto;font-size:14px}
+#checklist h3{font-size:19px}.check-row{min-height:43px}
+#checklist .note-actions{display:grid;gap:6px;margin-top:8px}
+#checklist button{padding:8px;font-size:15px}
+.sorting #pile .item{width:88px;height:88px}
+.fulfillment #table{top:250px}
+.fulfillment #sourceBox{left:27%;width:41%}
+#arrivalSignal{position:absolute;top:218px;left:28px;z-index:6;padding:7px 14px;font-size:15px;border-color:#d4b96e;background:#534226}
+#sweepButton{position:absolute;top:218px;right:28px;z-index:6;padding:7px 14px;font-size:15px}
+#boxMenu,#sortingDone{display:none!important}
+#inspector{left:50%;top:245px;width:550px;height:345px}
+#inspector.junk-open{left:29%;width:485px}
+#targetPreview{position:absolute;left:51%;top:245px;width:485px;height:345px;z-index:40;border:13px ridge #9d7346;border-radius:12px;background:#4b311f;box-shadow:0 12px 25px #1b120ccc}
+#targetPreview header{position:static;height:70px;padding:12px;font-size:20px;display:flex;justify-content:space-between}
+#targetPreview .target-items{position:relative;height:245px;overflow:auto;padding:12px;display:flex;align-content:flex-start;flex-wrap:wrap;gap:4px}
+#targetPreview img{width:65px;height:65px;object-fit:contain}
+#targetPreview .target-empty{font:16px/1.5 Arial;padding:25px;color:#dac9a9}
+.inspection-note{font-size:13px}
+.collection-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0}
+.collection-item{padding:8px 4px;min-height:103px;font-size:13px;position:relative}
+.collection-item img{width:64px;height:64px;display:block;margin:auto;object-fit:contain}
+.collection-item small{display:block;font:11px Arial;margin-top:4px}
+.collection-item.unknown img{filter:brightness(.15);opacity:.4}
+.collection-item:disabled{opacity:1}
+.rank-list{display:grid;gap:7px;text-align:left;margin:18px 0}.rank-row{padding:10px 15px;border:1px solid #776042;border-radius:6px;display:flex;justify-content:space-between;font:16px Arial}
+.rank-row.current{border-color:#bed38e;background:#60713a55}.rank-row.locked{opacity:.5}
+.modal-card.wide{width:850px}
+.clean-stage{position:relative;width:360px;height:270px;margin:15px auto;border:5px ridge #94703d;background:radial-gradient(#8d7250,#30231b);border-radius:12px;touch-action:none;overflow:hidden}
+.clean-stage img{width:100%;height:100%;object-fit:contain;padding:32px;pointer-events:none}
+.clean-stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.clean-meter{height:8px;background:#241b14;border-radius:8px;margin:12px 0}.clean-meter i{display:block;height:100%;background:#b7ca8a;border-radius:8px}
+.modal-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.modal-actions button{font-size:16px}
+.summary-grid small{display:block;margin-top:6px}
+.empty-pile{font-size:19px}
+.portrait-note{display:none}
+@media (orientation:portrait) and (max-width:700px){.portrait-note{position:fixed;top:15px;left:15px;right:15px;text-align:center;display:block;font:16px/1.5 Arial;color:#e8d4ac}}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
