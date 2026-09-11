@@ -1,0 +1,10 @@
+# Generated files are included in the download, but rebuilt from source in Git.
+/assets.js
+/Tavern.html
+/*.zip
+/RELEASE-MANIFEST.json
+/.package-check/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

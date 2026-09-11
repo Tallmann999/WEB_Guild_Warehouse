@@ -1,13 +1,20 @@
 """Register source rectangles; preserve the user's original PNGs unchanged."""
 from pathlib import Path
 from PIL import Image
-import shutil, json
+import shutil, json, argparse
 root=Path(__file__).resolve().parent
 out=root/'assets'/'custom'
 out.mkdir(parents=True,exist_ok=True)
+parser=argparse.ArgumentParser(description='Register sprites from the bundled sheets or import the original sheets.')
+parser.add_argument('--source-dir',type=Path,help='Optional directory with the original named PNGs. Defaults to bundled assets/custom sheets.')
+args=parser.parse_args()
 for n in range(3,11):
-    source=Path('D:/Downloads')/f'ChatGPT Image 10 сент. 2026 г., 10_38_30 ({n}).png'
-    shutil.copyfile(source,out/f'sheet-{n}.png')
+    destination=out/f'sheet-{n}.png'
+    source=args.source_dir/f'ChatGPT Image 10 сент. 2026 г., 10_38_30 ({n}).png' if args.source_dir else destination
+    if source.resolve()!=destination.resolve():
+        shutil.copyfile(source,destination)
+    if not destination.is_file():
+        parser.error(f'Missing source sheet: {destination.name}')
 sprites={}
 def add(sheet,names,xs,y0,y1):
     im=Image.open(out/f'sheet-{sheet}.png')
