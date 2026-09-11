@@ -1,0 +1,122 @@
+[
+  {
+    "name": "initial",
+    "count": 15,
+    "items": 30,
+    "categories": 4
+  },
+  {
+    "name": "wrong category",
+    "bag": 15,
+    "stock": 0,
+    "errors": 1
+  },
+  {
+    "name": "manual bag",
+    "screen": "work",
+    "gold": 30,
+    "stock": 15,
+    "order": [
+      {
+        "type": 18,
+        "count": 1
+      },
+      {
+        "type": 1,
+        "count": 1
+      },
+      {
+        "type": 12,
+        "count": 1
+      }
+    ]
+  },
+  {
+    "name": "assembly",
+    "packed": 3,
+    "stock": 12,
+    "shipVisible": false
+  },
+  {
+    "name": "dispatch",
+    "gold": 74,
+    "orders": 1
+  },
+  {
+    "name": "ad locked",
+    "disabled": true
+  },
+  {
+    "name": "cancel ad",
+    "bag": 24,
+    "autoSorting": false,
+    "paused": false
+  },
+  {
+    "name": "auto bag",
+    "bag": null,
+    "gold": 132,
+    "screen": "work",
+    "dayBags": 2
+  },
+  {
+    "name": "day end",
+    "ended": true,
+    "closing": true,
+    "gold": 192,
+    "stock": 31
+  },
+  {
+    "name": "next day",
+    "day": 2,
+    "gold": 192,
+    "stock": 31,
+    "bag": 20
+  },
+  {
+    "name": "drag depth",
+    "uid": 40,
+    "depth": 1001,
+    "pos": {
+      "x": 0.5046495551920116,
+      "y": 0.5147648428728481
+    }
+  },
+  {
+    "name": "hover depth",
+    "inline": "1001",
+    "computed": "100"
+  },
+  {
+    "name": "help bounds",
+    "x": 340,
+    "y": 70.046875,
+    "width": 600,
+    "height": 659.90625
+  },
+  {
+    "name": "viewport 1024",
+    "x": 128,
+    "y": 80,
+    "width": 1024,
+    "height": 640
+  },
+  {
+    "name": "viewport 800",
+    "x": 240,
+    "y": 150,
+    "width": 800,
+    "height": 500
+  },
+  {
+    "name": "viewport 390",
+    "x": 445,
+    "y": 300.125,
+    "width": 390,
+    "height": 243.75
+  },
+  {
+    "name": "page errors",
+    "errors": []
+  }
+]

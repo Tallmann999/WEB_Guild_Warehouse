@@ -1,0 +1,37 @@
+# Реестр систем Guild Warehouse
+
+Черновая декомпозиция для интервью. Приоритеты ниже — предложение, а не согласованный план. MVP означает основу проверяемого игрового цикла, P1 — следующую группу, P2 — отложенное развитие; это не уровни серьёзности ошибок из аудита. Владелец каждой системы — TBD. `done` означает наличие в v5, а не отсутствие дефектов и полную приёмку. Пофичевые ТЗ пока TBD.
+
+| feature_id | Система и ценность | priority | depends_on | distribution | status | spec_doc |
+| --- | --- | --- | --- | --- | --- | --- |
+| item_catalog | Различимые виды вещей и категории | MVP | — | all | done | TBD |
+| visitor_intake | Получение новой добычи и ощущение живого склада | MVP | item_catalog, day_cycle | all | done | TBD |
+| table_sorting | Создание порядка, перенос и распознавание категорий | MVP | visitor_intake | all | in_progress | TBD |
+| warehouse_organization | Своя организация отдельных экземпляров и поиск | MVP | table_sorting | all | in_progress | TBD |
+| order_generation | Заказы, в том числе на будущие поступления | MVP | warehouse_organization, item_catalog, visitor_intake | all | in_progress | TBD |
+| parcel_assembly | Применение созданного порядка и выдача | MVP | order_generation | all | done | TBD |
+| day_cycle | Ритм смены, паузы, ожидание и завершение | MVP | visitor_intake, parcel_assembly | all | in_progress | TBD |
+| rewards_and_stats | Результат действий в золоте, репутации и итогах | MVP | table_sorting, parcel_assembly | all | done | TBD |
+| input_and_navigation | Доступность экранов и предсказуемое управление | MVP | table_sorting, parcel_assembly | all | in_progress | TBD |
+| onboarding | Понимание цикла без внешних объяснений | MVP | input_and_navigation | all | in_progress | TBD |
+| playtest_measurement | Проверка удовольствия, темпа и пользы порядка | MVP | основной цикл | all | planned | TBD |
+| auto_sort | Помощь с приёмкой; тестовый вариант уже есть | P1 | table_sorting; роль рекламы TBD | f2p | in_progress | TBD |
+| save_and_resume | Возвращение к накопленному прогрессу | P1 | day_cycle, warehouse_organization | all | planned | TBD |
+| inventory_outflow | Управляемый объём запаса; способ TBD | P1 | order_generation, rewards_and_stats | all | planned | TBD |
+| warehouse_upgrades | Одно улучшение в коротком MVP; вид и цена TBD | MVP | rewards_and_stats; необходимость save_and_resume уточняется | all | planned | TBD |
+| item_examination | Очистка покрытия и изучение вещи | MVP | item_catalog, warehouse_organization | all | planned | TBD |
+| item_collection | Записи об очищенных находках, редкости; бонусы TBD | MVP | item_examination | all | planned | TBD |
+| reputation_unlocks | Репутация за заказы открывает посетителей, товары и заказы | MVP | parcel_assembly, item_catalog | all | planned | TBD |
+| monster_processing | Отдельная услуга разделки в закрытой зоне слева | P2 | reputation_unlocks | all | planned | TBD |
+| special_storage | Редкие свойства, артефакты, VIP и условия хранения | P2 | warehouse_organization, reputation_unlocks | all | planned | TBD |
+| assistants_and_parallel_work | Помощники, сканер, несколько мешков | P2 | основной цикл, warehouse_upgrades | all | planned | TBD |
+| art_audio_text | Читаемость предметов, атмосфера и понятные сообщения | MVP | все пользовательские сценарии | all | in_progress | TBD |
+| additional_rooms | Визуальное и механическое расширение комплекса | P2 | warehouse_upgrades | all | planned | TBD |
+
+`inventory_outflow` — предложение из аудита, не утверждённая новая механика. Модель f2p с рекламой подтверждена, но реальная рекламная интеграция в ближайшем MVP не согласована. Одно улучшение включено пользователем в целевой MVP. Изучение и коллекция предварительно отнесены к MVP по второй группе ответов. Для репутации предложено показать ограниченную часть в MVP, а не все шесть/семь уровней: точный объём требует ответа. Разделка монстров — будущая идея. Срок включения сохранений и роль автосортировки открыты. Целевой темп — без спешки, устройства — ПК и телефон горизонтально, длительность MVP — пять игровых дней, 15–20 минут, возможно до 30.
+
+## Зависимости и риски
+
+Каталог → мешок → сортировка → запас → заказ → выдача образуют основной цикл. Смена связывает его этапы. Сохранение должно учитывать незавершённые мешки и посылки после согласования соответствующих правил. Прогрессия зависит от экономики; контент открытий зависит от прогрессии.
+
+Три главных дизайнерских риска: организация не даёт заметной пользы; запас растёт быстрее расходования; автосортировка вытесняет ручное действие. Предлагается сначала уточнить эти решения, затем проектировать улучшения. Фактический порядок реализации пока не согласован.
