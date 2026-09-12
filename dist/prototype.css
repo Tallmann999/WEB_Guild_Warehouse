@@ -238,3 +238,10 @@ html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',san
 .unknown-preview img{width:100%;height:100%;object-fit:contain}
 .unknown-preview .mystery-question{font-size:60px}
 .reward-coin{position:fixed;z-index:2147483647;pointer-events:none;color:#ffd248;font-size:30px;line-height:1;text-shadow:0 2px #9d5f12,0 0 8px #ffe985}
+.item.dragging.mystery-item{opacity:1!important;position:fixed}
+.item.dragging.mystery-item>img{filter:brightness(0)!important;opacity:1!important}
+.recognition-result{color:#ffdf76!important;font-size:21px;line-height:1.4;text-shadow:0 0 12px #ffd45c44}
+.recognition-result strong{display:block;font-size:23px}
+.recognition-result span{display:inline-block;margin:4px 10px;font-weight:700}
+#pile.crowded-pile{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));grid-auto-rows:84px;align-content:start;overflow-y:auto;padding:8px;gap:4px}
+#pile.crowded-pile>.item{position:relative;left:auto!important;top:auto!important}

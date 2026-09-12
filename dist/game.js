@@ -173,9 +173,9 @@ function renderReception(){
     if(offer){
       prepareOffer(offer);const price=offer.price;const v=adventurers[offer.visitor];$('visitor').src=asset(v[2]);hidden('bag',false);$('bag').querySelector('img').src=asset(offer.big?'storage/bag-premium':'storage/bag');$('bag').classList.toggle('premium',!!offer.big);
       $('speech').innerHTML=`<span class="eyebrow">${v[1]}</span><h2>${v[0]}</h2><p>Добыча из похода. ${offer.big?'Большой мешок':'Мешок'} за <b>${price} монет</b> — внутри кое-что интересное!</p>`;
-      button(action,`Купить ${offer.big?'большой мешок':'мешок'} · ${price} монет`,buyBag,'buyBag',!!state.bag.length||state.gold<price).className='primary';
+      button(action,`Купить ${offer.big?'большой мешок':'мешок'} · ${price} монет`,buyBag,'buyBag',state.gold<price).className='primary';
       if(state.bag.length)button(action,'Продолжить разбор на столе',()=>setScreen('work','sort'),'resumeBag');
-      $('notice').innerHTML=`<b>Ждут у стойки: ${state.offers.length}</b><br>${state.bag.length?'Сначала освободите стол от прошлого мешка.':'Содержимое узнаете после покупки.'}<br>На складе: ${state.stock.length+state.junk.length} вещей.`;
+      $('notice').innerHTML=`<b>Ждут у стойки: ${state.offers.length}</b><br>Новый мешок добавится к находкам на столе.<br>На столе: ${state.bag.length} предметов.`;
     }else if(pending){
       const c=customers[pending.customer];$('visitor').src=asset(c[2]);hidden('parcel',false);
       $('speech').innerHTML=`<span class="eyebrow">${c[1]}</span><h2>${c[0]}</h2><p>${pending.description||'У меня есть поручение. Посмотрите список и примите его у стойки.'}</p>`;
@@ -213,17 +213,17 @@ function tickArrivals(){
   }
   if(changed){if(state.screen==='work')updateHud();else renderReception();save();}
 }
-function waitAtWindow(){if(state.paused||state.bag.length&&state.offers.length)return;const next=state.schedule[0];if(next){state.seconds=Math.max(0,CONFIG.daySeconds-next.at);tickArrivals();render();}}
+function waitAtWindow(){if(state.paused)return;const next=state.schedule[0];if(next){state.seconds=Math.max(0,CONFIG.daySeconds-next.at);tickArrivals();render();}}
 function buyBag(){
-  if(state.paused||state.bag.length||!state.offers.length||counterGuest()?.kind!=='bag')return;
+  if(state.paused||!state.offers.length||counterGuest()?.kind!=='bag')return;
   prepareOffer(state.offers[0]);if(state.gold<state.offers[0].price)return;
   const offer=state.offers.shift();state.gold-=offer.price;state.daySpent+=offer.price;state.dayBought++;
-  state.bag=offer.loot;state.combo=0;trackSortingBag(state.bag);
-  for(const x of state.bag)x.tablePos={x:Math.random()*.88,y:Math.random()*.74};
+  state.bag.push(...offer.loot);state.combo=0;trackSortingBag(offer.loot);
+  for(const x of offer.loot)x.tablePos={x:Math.random()*.88,y:Math.random()*.74};
   if(!INTRO_TIMING[state.day]&&!allOrders().some(o=>o.accepted===false)&&(!allOrders().length||state.offers.length||state.schedule.length))createOrder();setScreen('work','sort');beep();toast('Мешок ваш. Разложите находки по коробкам.');
 }
 function advanceReadyVisitor(dt){
-  if(!INTRO_TIMING[state.day]||!state.dayBought||state.bag.length||state.offers.length||allOrders().some(o=>o.accepted===false)){
+  if(!INTRO_TIMING[state.day]||!state.dayBought||(state.bag.length&&state.screen!=='reception')||state.offers.length||allOrders().some(o=>o.accepted===false)){
     state.arrivalIdle=0;return;
   }
   const nextBag=state.schedule[0]?.at??Infinity,nextOrder=state.orderSchedule?.[0]??Infinity;
@@ -315,6 +315,7 @@ function renderChecklist(){
 }
 function renderItems(area,list,kind){
   hidden('tooltip',true);
+  area.classList.toggle('crowded-pile',kind==='table'&&list.length>20);
   if(!list.length){area.innerHTML='<div class="empty-pile">Здесь пока пусто</div>';return;}
   const table=kind==='table',size=table?79:60,width=area.clientWidth||450,columns=Math.max(1,Math.floor((width-20)/68));
   list.forEach((x,i)=>{
@@ -349,11 +350,10 @@ function rewardSortedItem(uid){
   const batch=batches.find(b=>b.pending.includes(uid));if(!batch)return;
   batch.pending=batch.pending.filter(id=>id!==uid);if(batch.pending.length)return;
   state.sortingBatches=batches.filter(b=>b!==batch);
-  gainGold(10);
   $('sortingReward')?.remove();
   const panel=document.createElement('div');panel.id='sortingReward';panel.setAttribute('role','status');panel.setAttribute('aria-live','polite');
   panel.innerHTML='<strong>Поздравляем, вы правильно отсортировали!</strong><b>+10 монет</b>';
-  $('effects').append(panel);setTimeout(()=>panel.remove(),1500);updateHud();
+  $('effects').append(panel);gainGold(10,panel.querySelector('b'));setTimeout(()=>panel.remove(),1500);updateHud();
 }
 function wrong(message,el){state.dayErrors++;state.combo=0;toast(message);beep(true);el?.classList.add('shake');setTimeout(()=>el?.classList.remove('shake'),280);save();}
 function sortItem(uid,cat){
@@ -399,10 +399,11 @@ function openOrder(candidate){if(!state.started||state.paused||state.autoSorting
 }
 function finishOrder(){
   if(state.paused||!orderAccepted()||!orderComplete()||state.activeCat!==null)return;
-  const amount=state.order.reward,oldRank=rank();gainGold(amount);state.rep+=4;state.totalOrders++;state.dayOrders++;
+  const amount=state.order.reward,oldRank=rank();state.rep+=4;state.totalOrders++;state.dayOrders++;
   state.orders=allOrders().filter(o=>o!==state.order);state.order=state.orders[0]||null;
   setScreen('reception');beep();save();
   showOrderReward(amount,rank()>oldRank);
+  gainGold(amount,$('orderReward').querySelector('strong'));save();
 }
 function requestEndDay(){
   if(state.ended){showSummary();return;}
@@ -441,9 +442,9 @@ function cancelDrag(){if(drag){drag.ghost?.remove();drag.node.style.opacity='';d
 function inside(el,x,y){if(!el)return false;const r=el.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
 addEventListener('pointermove',e=>{
   if(!drag)return;if(!drag.active&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;
-  if(!drag.active){drag.active=true;drag.ghost=drag.node.cloneNode(true);drag.ghost.className='item dragging';drag.ghost.style.transform='none';drag.ghost.style.width=drag.node.getBoundingClientRect().width+'px';drag.ghost.style.height=drag.node.getBoundingClientRect().height+'px';document.body.append(drag.ghost);drag.node.style.opacity='.2';}
+  if(!drag.active){drag.active=true;drag.ghost=drag.node.cloneNode(true);drag.ghost.classList.add('dragging');drag.ghost.classList.remove('chosen');drag.ghost.style.opacity='1';drag.ghost.style.transform='none';drag.ghost.style.width=drag.node.getBoundingClientRect().width+'px';drag.ghost.style.height=drag.node.getBoundingClientRect().height+'px';document.body.append(drag.ghost);drag.node.style.opacity='0';}
   drag.ghost.style.left=e.clientX-drag.grabX*scale+'px';drag.ghost.style.top=e.clientY-drag.grabY*scale+'px';
-  const scroll=drag.kind==='inspect'||drag.kind==='junk'?$('inspectScroll'):$('sourceScroll');
+  const scroll=drag.kind==='table'?$('pile'):drag.kind==='inspect'||drag.kind==='junk'?$('inspectScroll'):$('sourceScroll');
   if(scroll&&inside(scroll,e.clientX,e.clientY)){const r=scroll.getBoundingClientRect();if(e.clientY>r.bottom-20*scale)scroll.scrollTop+=10;if(e.clientY<r.top+20*scale)scroll.scrollTop-=10;}
 });
 addEventListener('pointerup',e=>{
@@ -485,7 +486,7 @@ function sweep(){if(!state.upgrade||state.paused||!state.bag.length)return;state
 function rarity(type){return type===17||type===23?'Легендарная':type===15||type===28?'Эпическая':type%5===0?'Редкая':'Простая';}
 function openUnknown(x){
   if(state.paused||state.autoSorting||!isUnknown(x))return;
-  modal(`<h2>Неизвестная находка</h2><div class="unknown-preview mystery-item"><img src="${asset(items[x.type].sprite)}" alt="Неизвестная находка"><span class="mystery-question">?</span></div><p>Осмотрите и очистите предмет, чтобы узнать, что это.</p><button id="inspectUnknown" class="primary">Осмотреть</button><button id="stashUnknown" ${!state.upgrade||state.junk.includes(x)?'disabled':''}>${state.junk.includes(x)?'Уже в Диковинках':state.upgrade?'Отложить в Диковинки':'Диковинки — сначала откройте сундук'}</button>`);
+  modal(`<h2>Неизвестная находка</h2><div class="unknown-preview mystery-item"><img src="${asset(items[x.type].sprite)}" alt="Неизвестная находка"><span class="mystery-question">?</span></div><p>Очистите предмет, чтобы распознать его.</p><button id="inspectUnknown" class="primary">Распознать</button><button id="stashUnknown" ${!state.upgrade||state.junk.includes(x)?'disabled':''}>${state.junk.includes(x)?'Уже в Диковинках':state.upgrade?'Отложить в Диковинки':'Диковинки — сначала откройте сундук'}</button>`);
   $('inspectUnknown').onclick=()=>openCleaning(x.type,x);
   $('stashUnknown').onclick=()=>{if(!state.upgrade||state.junk.includes(x))return;state.bag=state.bag.filter(y=>y!==x);state.stock=state.stock.filter(y=>y!==x);state.junk.push(x);closeModal();render();if(state.inspectCat!==null)renderInspection();save();};
 }
@@ -494,7 +495,9 @@ function recognizeItem(type,instance){
   if(!newlyKnown&&!wasUnknown)return;
   if(wasUnknown)instance.unknown=false;
   if(newlyKnown){state.collection.push(type);state.rep+=1;}
-  const reward=(newlyKnown?5:0)+(wasUnknown?7:0);if(reward)gainGold(reward,$('dirt'));
+  const reward=(newlyKnown?5:0)+(wasUnknown?7:0);
+  const status=$('cleanStatus');if(status){status.classList.add('recognition-result');status.innerHTML=`<strong>Вы распознали: ${items[type].name}</strong><span id="recognitionGold">+${reward} монет</span><span>+${newlyKnown?1:0} репутация</span>`;}
+  if(reward)gainGold(reward,$('recognitionGold')||status);
   save();return {newlyKnown,wasUnknown,reward};
 }
 function openCollection(){
@@ -507,7 +510,7 @@ function openCleaning(type,instance=owned().find(x=>x.type===type&&isUnknown(x))
   modal(`<h2 id="recognitionTitle">${done?it.name:'Осмотр находки'}</h2><p>${done?'Вы распознали эту находку и записали её название в атлас.':'Проведите пальцем или мышью, чтобы стереть налёт.'}</p><div class="clean-stage"><img src="${asset(it.sprite)}" alt="${done?it.name:'Неизученная находка'}"><canvas id="dirt" width="360" height="270" aria-label="Стирайте налёт с находки"></canvas></div><div class="clean-meter"><i id="cleanBar" style="width:${done?100:0}%"></i></div><p id="cleanStatus">${done?'✓ Распознано: '+it.name:'Очищено 0%'}</p><div class="modal-actions"><button id="cleanKey">Очистить участок · клавиатура</button><button id="backCollection">К коллекции</button></div>`);
   const canvas=$('dirt'),ctx=canvas.getContext('2d',{willReadFrequently:true});let down=false,complete=done,strokes=0;
   if(!done){ctx.fillStyle='#736650';ctx.fillRect(0,0,360,270);for(let i=0;i<150;i++){ctx.fillStyle=i%2?'#8f7d60':'#5d513f';ctx.beginPath();ctx.arc(Math.random()*360,Math.random()*270,rand(1,5),0,7);ctx.fill();}}
-  function check(){if(complete)return;const data=ctx.getImageData(0,0,360,270).data;let clear=0;for(let i=3;i<data.length;i+=16)if(data[i]<50)clear++;const pct=Math.round(clear/(data.length/16)*100);$('cleanBar').style.width=pct+'%';$('cleanStatus').textContent=`Очищено ${pct}%`;if(pct>=85){complete=true;ctx.clearRect(0,0,360,270);const recognition=recognizeItem(type,instance);$('cleanBar').style.width='100%';$('recognitionTitle').textContent=it.name;$('cleanStatus').textContent=`Вы распознали: ${it.name}. +${recognition?.reward||0} монет · +${recognition?.newlyKnown?1:0} репутация`;$('cleanKey').disabled=true;render();if(state.inspectCat!==null)renderInspection();save();beep();}}
+  function check(){if(complete)return;const data=ctx.getImageData(0,0,360,270).data;let clear=0;for(let i=3;i<data.length;i+=16)if(data[i]<50)clear++;const pct=Math.round(clear/(data.length/16)*100);$('cleanBar').style.width=pct+'%';$('cleanStatus').textContent=`Очищено ${pct}%`;if(pct>=85){complete=true;ctx.clearRect(0,0,360,270);recognizeItem(type,instance);$('cleanBar').style.width='100%';$('recognitionTitle').textContent=it.name;$('cleanKey').disabled=true;render();if(state.inspectCat!==null)renderInspection();save();beep();}}
   function erase(x,y){if(complete)return;ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(x,y,33,0,Math.PI*2);ctx.fill();check();}
   function point(e){const r=canvas.getBoundingClientRect();erase((e.clientX-r.left)/r.width*360,(e.clientY-r.top)/r.height*270);}
   canvas.onpointerdown=e=>{down=true;canvas.setPointerCapture(e.pointerId);point(e);};canvas.onpointermove=e=>{if(down)point(e);};canvas.onpointerup=canvas.onpointercancel=()=>down=false;
