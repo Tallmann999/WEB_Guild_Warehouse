@@ -23,6 +23,12 @@ function save(){if(!state.started)return;try{localStorage.setItem(SAVE_KEY,JSON.
 function resize(){scale=Math.min(innerWidth/1280,innerHeight/800);$('game').style.transform=`translate(-50%,-50%) scale(${scale})`;}
 function beep(bad=false){if(state.muted)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const o=audioContext.createOscillator(),g=audioContext.createGain();o.connect(g);g.connect(audioContext.destination);o.frequency.value=bad?150:560;g.gain.setValueAtTime(.035,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+.12);o.start();o.stop(audioContext.currentTime+.13);}catch{}}
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2500);}
+function showOrderReward(amount,promoted){
+  $('orderReward')?.remove();
+  const panel=document.createElement('div');panel.id='orderReward';panel.setAttribute('role','status');panel.setAttribute('aria-live','polite');
+  panel.innerHTML=`<span>Заказ выполнен</span><strong>Золото получено: +${amount}</strong><strong>Репутация повышена: +4</strong>${promoted?`<b>Новый ранг: ${rankNames[rank()]}</b>`:''}`;
+  $('effects').append(panel);setTimeout(()=>panel.remove(),4500);
+}
 function hidden(id,value){$(id).classList.toggle('hidden',value);}
 function button(parent,label,action,id,disabled=false){const b=document.createElement('button');b.textContent=label;if(id)b.id=id;b.disabled=disabled;b.onclick=action;parent.append(b);return b;}
 function lockBackground(value){for(const child of $('game').children)if(!['modal','effects','toast','tooltip'].includes(child.id))child.inert=value;}
@@ -47,15 +53,21 @@ function updateHud(){
   signal.classList.toggle('waiting',!!state.offers.length);
 }
 function setScreen(screen,mode=state.mode){cancelDrag();state.screen=screen;state.mode=mode;state.activeCat=null;state.inspectCat=null;state.selected=null;hidden('inspector',true);hidden('targetPreview',true);hidden('tooltip',true);render();save();}
-function render(){hidden('reception',state.screen!=='reception');hidden('work',state.screen!=='work');updateHud();state.screen==='reception'?renderReception():renderWork();}
+function render(){
+  const starting=!state.started;
+  $('game').classList.toggle('starting',starting);hidden('startScreen',!starting);
+  hidden('loadGame',!starting||!hasSave());
+  hidden('reception',starting||state.screen!=='reception');hidden('work',starting||state.screen!=='work');
+  updateHud();if(!starting)state.screen==='reception'?renderReception():renderWork();
+}
 function renderReception(){
   const action=$('receptionAction');action.innerHTML='';hidden('speech',false);hidden('bag',true);hidden('parcel',true);hidden('visitor',false);
-  if(!state.started){
-    $('speech').innerHTML='<span class="eyebrow">ПЯТЬ ДНЕЙ В ГИЛЬДИИ</span><h2>Ваша собственная лавка</h2><p>Покупайте находки, создавайте порядок и собирайте заказы.</p>';
-    button(action,'Начать пять дней',startGame,'startGame').className='primary';
-    if(hasSave())button(action,'Продолжить сохранённую игру',loadGame,'loadGame');
-    $('notice').innerHTML='<b>80 монет на первую закупку</b><br>Мышь или касание · играйте в своём темпе.<br>Прогресс сохраняется в этом браузере.';
-  }else{
+  if(!state.started)return;
+  // Leave the counter empty until the first visitor's scheduled arrival.
+  if(state.day===1&&!state.dayBought&&!state.offers.length&&state.schedule[0]?.at===2){
+    hidden('speech',true);hidden('visitor',true);$('stepHint').textContent='';return;
+  }
+  {
     const offer=state.offers[0];
     if(offer){
       const v=adventurers[offer.visitor];$('visitor').src=asset(v[2]);hidden('bag',false);
@@ -78,14 +90,14 @@ function renderReception(){
   }
   $('stepHint').textContent=state.started?'Мешок → ваш порядок → заказы → развитие лавки':'Наведите порядок среди находок и познакомьтесь с гильдией.';
 }
-function planDay(){
+function planDay(firstArrival=0){
   state.seconds=CONFIG.daySeconds;state.dayIncome=state.daySpent=state.daySorted=state.dayErrors=state.dayOrders=state.dayBought=0;
   state.schedule=[];state.offers=[];
   const n=rand(3,4),types=pool();
-  for(let i=0;i<n;i++)state.schedule.push({at:i===0?0:Math.round(i*140/(n-1)),visitor:(state.day+i-1)%adventurers.length,loot:Array.from({length:state.day===1?12:14},()=>makeItem(choose(types)))});
+  for(let i=0;i<n;i++)state.schedule.push({at:i===0?firstArrival:Math.round(i*140/(n-1)),visitor:(state.day+i-1)%adventurers.length,loot:Array.from({length:state.day===1?12:14},()=>makeItem(choose(types)))});
   guaranteeOrder();tickArrivals();
 }
-function startGame(){state=freshState();state.started=true;planDay();render();save();toast('Первая закупка ждёт. Купите мешок у авантюриста.');}
+function startGame(){state=freshState();state.started=true;last=performance.now();planDay(2);render();save();}
 function tickArrivals(){
   let changed=false;
   while(state.schedule.length&&state.schedule[0].at<=CONFIG.daySeconds-state.seconds){state.offers.push(state.schedule.shift());changed=true;}
@@ -118,13 +130,13 @@ function renderWork(){
   $('workMode').textContent=sort?'ВАША ЛАВКА · СОРТИРОВКА':'ЗАКАЗ · СБОРКА ПОСЫЛКИ';$('workTitle').textContent=sort?'У каждой находки — своё место':'Найдите вещи в своём складе';
   $('workProgress').textContent=sort?`${state.bag.length} на столе`:`${state.order?.packed.length||0} в посылке`;
   $('pileCaption').textContent=sort?'ДОБЫЧА НА СТОЛЕ':'ПОСЫЛКА И ВАШИ ЗАПАСЫ';$('combo').textContent=state.combo>=3?`${state.combo} подряд`:'';
-  $('workHint').textContent=sort?'Перетащите в коробку · или выберите вещь, затем коробку':'Нажмите нужную вещь или перетащите в посылку слева';
+  $('workHint').textContent=sort?'Перетащите в коробку · или выберите вещь, затем коробку':'Нажмите нужную вещь или перетащите в коробку слева';
   $('stepHint').textContent=sort?'Коробка → осмотр. В коллекции можно очистить находки.':'Список остаётся с вами, пока не соберёте всё необходимое.';
   renderShelves();$('pile').innerHTML='';if(sort)renderItems($('pile'),state.bag,'table');
   $('boxZone').innerHTML='';$('sourceBox').innerHTML='';hidden('sourceBox',true);
   if(!sort){
-    $('boxZone').innerHTML='<div class="parcel-title">ПОСЫЛКА</div><div id="parcelDrop"><div id="packedItems"></div></div><span class="parcel-count"></span>';
-    for(const [i,x] of (state.order?.packed||[]).entries()){const im=document.createElement('img');im.src=asset(items[x.type].sprite);im.style.left=(i%3)*57+'px';im.style.top=Math.floor(i/3)*47+'px';$('packedItems').append(im);}
+    $('boxZone').innerHTML='<div class="parcel-title">КОРОБКА ДЛЯ ЗАКАЗА</div><div id="parcelDrop" aria-label="Открытая коробка для заказа"><div id="packedItems"></div></div><span class="parcel-count"></span>';
+    for(const x of (state.order?.packed||[])){const im=document.createElement('img');im.src=asset(items[x.type].sprite);im.alt=items[x.type].name;$('packedItems').append(im);}
     $('boxZone').querySelector('.parcel-count').textContent=`${state.order?.packed.length||0} предметов`;
     hidden('sourceBox',false);
     if(state.activeCat===null){$('sourceBox').className='source-placeholder';$('sourceBox').textContent='Откройте нужную коробку на полке';}
@@ -138,10 +150,11 @@ function renderShelves(){
   $('shelves').innerHTML='';
   categories.forEach((cat,i)=>{
     const b=button($('shelves'),'',()=>selectBox(i));b.className='shelf-box';b.dataset.cat=i;b.setAttribute('aria-label',`${cat.name}: ${stockFor(i).length}`);
-    b.innerHTML=`<img class="boxart" src="${asset('s5_0')}" alt=""><img class="category-icon" src="${asset(cat.icon)}" alt=""><span class="quantity">${stockFor(i).length}</span><span class="tag">${cat.name}</span>`;
+    const box=['crate','basket','barrel','weapons'][i];
+    b.innerHTML=`<img class="boxart" src="${asset('storage/'+box)}" alt=""><span class="quantity">${stockFor(i).length}</span><span class="tag">${cat.name}</span>`;
   });
-  const junk=button($('shelves'),'',()=>state.upgrade?openInspection('junk'):openUpgrade());junk.className='shelf-box'+(state.upgrade?'':' locked');junk.id='junkShelf';junk.innerHTML=`<img class="boxart" src="${asset('s5_4')}" alt=""><span class="quantity">${state.upgrade?state.junk.length:'🔒'}</span><span class="tag">Диковинки</span>`;
-  const rare=button($('shelves'),'',openRanks);rare.className='shelf-box locked';rare.innerHTML=`<img class="boxart" src="${asset('s5_4')}" alt=""><span class="quantity">🔒</span><span class="tag">Будущее гильдии</span>`;
+  const junk=button($('shelves'),'',()=>state.upgrade?openInspection('junk'):openUpgrade());junk.className='shelf-box'+(state.upgrade?'':' locked');junk.id='junkShelf';junk.innerHTML=`<img class="boxart" src="${asset('storage/chest')}" alt=""><span class="quantity">${state.upgrade?state.junk.length:'🔒'}</span><span class="tag">Диковинки</span>`;
+  const rare=button($('shelves'),'',openRanks);rare.className='shelf-box locked';rare.innerHTML=`<img class="boxart" src="${asset('storage/cage')}" alt=""><span class="quantity">🔒</span><span class="tag">Будущее гильдии</span>`;
 }
 function selectBox(cat){
   if(state.paused||state.autoSorting)return;
@@ -151,7 +164,7 @@ function selectBox(cat){
 }
 function renderChecklist(){
   const el=$('checklist');hidden('checklist',!state.order);el.innerHTML='';if(!state.order)return;
-  const o=state.order;el.innerHTML=`<h3>${state.mode==='sort'?'Заказ на сегодня':'Положить в посылку'}</h3>`+o.recipe.map(r=>`<div class="check-row ${remaining(r)===0?'done':''}"><span class="checkmark">${remaining(r)===0?'✓':'○'}</span><img src="${asset(items[r.type].sprite)}" alt=""><span class="check-name">${items[r.type].name}</span><b>${r.count-remaining(r)}/${r.count}</b></div>`).join('')+`<div class="dispatch-status">${o.reward} монет${o.carried?' · перенесён':''}</div><div class="note-actions"></div>`;
+  const o=state.order;el.innerHTML=`<h3>${state.mode==='sort'?'Заказ на сегодня':'Положить в коробку'}</h3>`+o.recipe.map(r=>`<div class="check-row ${remaining(r)===0?'done':''}"><span class="checkmark">${remaining(r)===0?'✓':'○'}</span><img src="${asset(items[r.type].sprite)}" alt=""><span class="check-name">${items[r.type].name}</span><b>${r.count-remaining(r)}/${r.count}</b></div>`).join('')+`<div class="dispatch-status">${o.reward} монет${o.carried?' · перенесён':''}</div><div class="note-actions"></div>`;
   const actions=el.querySelector('.note-actions');
   if(state.mode==='sort')button(actions,'Собрать заказ',()=>setScreen('work','order'),'assembleNote');
   else if(orderComplete())button(actions,state.activeCat===null?'Выдать посылку':'Сначала закройте коробку',finishOrder,'ship',state.activeCat!==null).className='primary';
@@ -204,7 +217,7 @@ function finishOrder(){
   if(state.paused||!orderComplete()||state.activeCat!==null)return;
   const amount=state.order.reward,oldRank=rank();state.gold+=amount;state.dayIncome+=amount;state.rep+=4;state.totalOrders++;state.dayOrders++;state.order=null;
   setScreen('reception');beep();save();
-  toast(rank()>oldRank?`Новый ранг: ${rankNames[rank()]}! Следующие мешки станут интереснее.`:`Заказ выдан: +${amount} монет · +4 репутации`);
+  showOrderReward(amount,rank()>oldRank);
 }
 function requestEndDay(){
   if(state.ended){showSummary();return;}
@@ -268,14 +281,14 @@ addEventListener('pointercancel',cancelDrag);
 
 function openUpgrade(){
   if(!state.started||state.paused)return;
-  modal(`<h2>Диковинки</h2><img class="modal-art" src="${asset('s5_4')}" alt="Коробка"><p>Уберите всё несортированное со стола одним действием. Позже откройте две коробки и разложите находки по категориям.</p><p>${state.upgrade?'Улучшение уже ваше.':`Стоимость: ${CONFIG.upgradePrice} монет · у вас ${state.gold}`}</p><button class="primary" id="buyUpgrade" ${state.upgrade||state.gold<CONFIG.upgradePrice?'disabled':''}>${state.upgrade?'Приобретено':'Купить коробку'}</button>`);
+  modal(`<h2>Диковинки</h2><img class="modal-art" src="${asset('storage/chest')}" alt="Коробка"><p>Уберите всё несортированное со стола одним действием. Позже откройте две коробки и разложите находки по категориям.</p><p>${state.upgrade?'Улучшение уже ваше.':`Стоимость: ${CONFIG.upgradePrice} монет · у вас ${state.gold}`}</p><button class="primary" id="buyUpgrade" ${state.upgrade||state.gold<CONFIG.upgradePrice?'disabled':''}>${state.upgrade?'Приобретено':'Купить коробку'}</button>`);
   $('buyUpgrade').onclick=()=>{if(state.upgrade||state.gold<CONFIG.upgradePrice)return;state.gold-=CONFIG.upgradePrice;state.daySpent+=CONFIG.upgradePrice;state.upgrade=true;closeModal();render();save();toast('Диковинки установлены. На столе появилась кнопка быстрой уборки.');};
 }
 function sweep(){if(!state.upgrade||state.paused||!state.bag.length)return;state.bag.forEach(x=>{delete x.boxPos;state.junk.push(x);});state.bag=[];state.selected=null;render();save();beep();toast('Стол свободен. Несортированное ждёт в «Диковинках».');}
 function rarity(type){return type===17||type===23?'Легендарная':type===15||type===28?'Эпическая':type%5===0?'Редкая':'Простая';}
 function openCollection(){
   if(!state.started||state.paused)return;const available=new Set(owned().map(x=>x.type));
-  modal(`<h2>Атлас находок</h2><p>Открыто ${state.collection.length} / ${items.length}. Нажмите находку из запасов, чтобы очистить её.<br>Товар останется у вас и будет доступен для заказа.</p><div class="collection-grid">${items.map(it=>`<button class="collection-item ${state.collection.includes(it.id)?'known':available.has(it.id)?'':'unknown'}" data-type="${it.id}" ${available.has(it.id)?'':'disabled'}><img src="${asset(it.sprite)}" alt=""><span>${state.collection.includes(it.id)||available.has(it.id)?it.name:'Не найдено'}</span><small>${state.collection.includes(it.id)?'✓ '+rarity(it.id):available.has(it.id)?'Очистить':'—'}</small></button>`).join('')}</div>`,{wide:true});
+  modal(`<img class="collection-ledger" src="assets/storage/ledger.png" alt=""><h2>Атлас находок</h2><p>Открыто ${state.collection.length} / ${items.length}. Нажмите находку из запасов, чтобы очистить её.<br>Товар останется у вас и будет доступен для заказа.</p><div class="collection-grid">${items.map(it=>`<button class="collection-item ${state.collection.includes(it.id)?'known':available.has(it.id)?'':'unknown'}" data-type="${it.id}" ${available.has(it.id)?'':'disabled'}><img src="${asset(it.sprite)}" alt=""><span>${state.collection.includes(it.id)||available.has(it.id)?it.name:'Не найдено'}</span><small>${state.collection.includes(it.id)?'✓ '+rarity(it.id):available.has(it.id)?'Очистить':'—'}</small></button>`).join('')}</div>`,{wide:true});
   $('modalContent').querySelectorAll('[data-type]').forEach(b=>b.onclick=()=>openCleaning(Number(b.dataset.type)));
 }
 function openCleaning(type){
@@ -302,6 +315,10 @@ function loadGame(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s?
 function help(){if(state.paused)return;modal('<h2>Как работает лавка</h2><div class="rules"><b>Закупка.</b> Купите мешок за 10 монет. Содержимое заранее неизвестно.<br><b>Порядок.</b> Перетаскивайте вещи на полки. Или нажмите вещь, затем коробку. Ошибка подскажет категорию.<br><b>Заказ.</b> Листок справа. Недостающее появится в новых мешках. Откройте коробку и отправляйте нужное в посылку.<br><b>Диковинки.</b> За 20 монет купите временную коробку и убирайте остаток мешка одним действием.<br><b>Атлас.</b> Очистите находку и сохраните её изображение. Товар остаётся для продажи.<br><b>Вечер.</b> Новые приходы прекращаются; закончите дела и нажмите «Закончить день».</div>');}
 
 function setup(){
+  const start=document.createElement('section');start.id='startScreen';start.setAttribute('aria-label','Начало игры');
+  const startActions=document.createElement('div');startActions.className='start-actions';start.append(startActions);
+  button(startActions,'Начать',startGame,'startGame').className='primary';
+  button(startActions,'Продолжить',loadGame,'loadGame');$('game').prepend(start);
   const arrival=document.createElement('button');arrival.id='arrivalSignal';arrival.onclick=()=>setScreen('reception');$('work').append(arrival);
   const sweepButton=document.createElement('button');sweepButton.id='sweepButton';sweepButton.textContent='Убрать всё в Диковинки';sweepButton.onclick=sweep;$('work').append(sweepButton);
   const target=document.createElement('section');target.id='targetPreview';target.className='hidden';$('work').append(target);

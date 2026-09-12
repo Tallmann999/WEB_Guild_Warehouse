@@ -1,0 +1,173 @@
+{
+  "crate": {
+    "sourceBounds": [
+      24,
+      94,
+      249,
+      246
+    ],
+    "padding": 4
+  },
+  "weapons": {
+    "sourceBounds": [
+      293,
+      18,
+      240,
+      334
+    ],
+    "padding": 4
+  },
+  "bag": {
+    "sourceBounds": [
+      545,
+      96,
+      212,
+      258
+    ],
+    "padding": 4
+  },
+  "barrel": {
+    "sourceBounds": [
+      767,
+      95,
+      200,
+      261
+    ],
+    "padding": 4
+  },
+  "chest": {
+    "sourceBounds": [
+      982,
+      112,
+      256,
+      228
+    ],
+    "padding": 4
+  },
+  "basket": {
+    "sourceBounds": [
+      19,
+      410,
+      259,
+      251
+    ],
+    "padding": 4
+  },
+  "cart": {
+    "sourceBounds": [
+      289,
+      385,
+      299,
+      278
+    ],
+    "padding": 4
+  },
+  "sign": {
+    "sourceBounds": [
+      607,
+      379,
+      328,
+      306
+    ],
+    "padding": 4
+  },
+  "hook": {
+    "sourceBounds": [
+      952,
+      396,
+      121,
+      263
+    ],
+    "padding": 4
+  },
+  "lantern": {
+    "sourceBounds": [
+      1092,
+      371,
+      146,
+      309
+    ],
+    "padding": 4
+  },
+  "tag-crate": {
+    "sourceBounds": [
+      17,
+      690,
+      194,
+      269
+    ],
+    "padding": 4
+  },
+  "tag-supplies": {
+    "sourceBounds": [
+      246,
+      685,
+      188,
+      278
+    ],
+    "padding": 4
+  },
+  "tag-weapons": {
+    "sourceBounds": [
+      480,
+      685,
+      195,
+      275
+    ],
+    "padding": 4
+  },
+  "parcel": {
+    "sourceBounds": [
+      703,
+      750,
+      267,
+      201
+    ],
+    "padding": 4
+  },
+  "cage": {
+    "sourceBounds": [
+      1008,
+      706,
+      233,
+      245
+    ],
+    "padding": 4
+  },
+  "potions": {
+    "sourceBounds": [
+      15,
+      980,
+      340,
+      246
+    ],
+    "padding": 4
+  },
+  "herbs": {
+    "sourceBounds": [
+      393,
+      975,
+      224,
+      264
+    ],
+    "padding": 4
+  },
+  "case": {
+    "sourceBounds": [
+      642,
+      1021,
+      340,
+      172
+    ],
+    "padding": 4
+  },
+  "ledger": {
+    "sourceBounds": [
+      1009,
+      966,
+      227,
+      269
+    ],
+    "padding": 4
+  }
+}
