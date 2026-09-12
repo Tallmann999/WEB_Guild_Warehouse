@@ -1,0 +1,23 @@
+const {chromium}=require('C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict');const path=require('node:path');
+(async()=>{const b=await chromium.launch({channel:'msedge',headless:true});try{
+ const p=await b.newPage({viewport:{width:1280,height:800}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
+ await p.goto('file:///'+path.resolve(__dirname,'../dist/index.html').replaceAll('\\','/'));await p.locator('#startGame').click();await p.locator('#buyBag').click();await p.evaluate(()=>{state.seconds=CONFIG.daySeconds-INTRO_TIMING[state.day].orders[0];tickArrivals();});
+ const item=p.locator('#pile .item').last(),name=await item.getAttribute('aria-label');await item.hover();assert.equal(await p.locator('#tooltip').textContent(),name);assert.equal(await p.locator('#tooltip').isVisible(),true);
+ await p.locator('#ordersNav').click();await p.locator('#acceptOrder').click();
+ assert.equal(await p.locator('#visitor').isVisible(),false);assert.equal(await p.locator('#orderBoard .order-card').count(),1);
+ const id=await p.evaluate(()=>state.order.id);
+ await p.locator('#orderBoard .order-card').click();assert.equal(await p.evaluate(()=>state.screen),'reception');await p.locator('#beginAssembly').click();
+ await p.evaluate(()=>{const x=makeItem(state.order.recipe[0].type);state.stock.push(x);packItem(x.uid);});
+ const packed=await p.evaluate(()=>state.order.packed[0].uid);
+ await p.evaluate(()=>{createOrder();setScreen('reception','sort');});await p.locator('#receptionOrder').click();await p.locator('#acceptOrder').click();
+ assert.equal(await p.locator('#orderBoard .order-card').count(),2);
+ await p.screenshot({path:path.resolve(__dirname,'../audit_source/order-board.png'),animations:'disabled'});
+ await p.locator(`#orderBoard [data-order-id="${id}"]`).click();await p.screenshot({path:path.resolve(__dirname,'../audit_source/order-details.png'),animations:'disabled'});await p.locator('#beginAssembly').click();
+ assert.equal(await p.evaluate(()=>state.order.packed[0].uid),packed);
+ const count=await p.evaluate(()=>owned().length);await p.reload();await p.locator('#loadGame').click();
+ assert.equal(await p.evaluate(()=>allOrders().length),2);assert.equal(await p.evaluate(()=>owned().length),count);assert.equal(await p.evaluate(()=>state.orders.includes(state.order)),true);
+ await p.evaluate(()=>{for(const r of state.order.recipe)while(remaining(r)>0){const x=makeItem(r.type);state.stock.push(x);packItem(x.uid);}state.activeCat=null;finishOrder();});
+ assert.equal(await p.locator('#orderBoard .order-card').count(),1);assert.equal(await p.evaluate(uid=>allOrders().some(o=>o.packed.some(x=>x.uid===uid)),packed),false);
+ assert.deepEqual(errors,[]);console.log('PASS: hover name, customer leaves, two order cards, detail then assembly, partial contents retained, reload, independent completion');
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});

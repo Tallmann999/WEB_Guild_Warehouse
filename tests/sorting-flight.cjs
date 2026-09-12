@@ -1,0 +1,24 @@
+const {chromium}=require('C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict');const path=require('node:path');
+(async()=>{const b=await chromium.launch({channel:'msedge',headless:true});try{
+ const p=await b.newPage({viewport:{width:1280,height:800}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
+ await p.goto('file:///'+path.resolve(__dirname,'../dist/index.html').replaceAll('\\','/'));await p.locator('#startGame').click();await p.locator('#buyBag').click();
+ const before=await p.evaluate(()=>({count:owned().length,gold:state.gold,uids:state.bag.map(x=>x.uid)}));
+ await p.locator('#autoSortButton').click();await p.locator('#confirmAuto').click();
+ await p.waitForSelector('.flying-loot');assert.equal(await p.evaluate(()=>state.stock.length),0);
+ assert.equal(await p.evaluate(()=>owned().length),before.count);
+ const first=await p.locator('.flying-loot').boundingBox();await p.waitForTimeout(200);const second=await p.locator('.flying-loot').boundingBox();assert.ok(second.y<first.y);
+ await p.screenshot({path:path.resolve(__dirname,'../audit_source/auto-sort-flight.png')});
+ await p.waitForFunction(()=>state.stock.length>0);assert.ok(await p.evaluate(()=>state.bag.length>0));
+ await p.waitForFunction(()=>!state.autoSorting,{},{timeout:25000});
+ assert.equal(await p.locator('.flying-loot').count(),0);
+ assert.deepEqual(await p.evaluate(()=>state.stock.map(x=>x.uid).sort((a,b)=>a-b)),before.uids.sort((a,b)=>a-b));
+ assert.equal(await p.evaluate(()=>state.gold),before.gold);assert.equal(await p.evaluate(()=>state.daySorted),before.count);
+ assert.equal(await p.locator('#arrivalSignal').isVisible(),false);
+ await p.evaluate(()=>{state.seconds=CONFIG.daySeconds-state.schedule[0].at;tickArrivals();});
+ assert.equal(await p.locator('#arrivalSignal').isVisible(),true);assert.match(await p.locator('#arrivalSignal').textContent(),/Гость у стойки/);
+ assert.equal(await p.locator('.arrival-mark').evaluate(n=>getComputedStyle(n).fontSize),'50px');
+ await p.screenshot({path:path.resolve(__dirname,'../audit_source/visitor-notice.png'),animations:'disabled'});
+ await p.locator('#arrivalSignal').click();assert.equal(await p.evaluate(()=>state.screen),'reception');assert.equal(await p.locator('#arrivalSignal').isVisible(),false);
+ assert.deepEqual(errors,[]);console.log('PASS: gradual flights, landing inventory updates, no item loss, visitor notice, 50px mark, navigation');
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});

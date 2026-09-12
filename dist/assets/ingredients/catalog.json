@@ -1,0 +1,380 @@
+[
+  {
+    "name": "Стейк рогача",
+    "cat": 4,
+    "sprite": "ingredients/item5-0",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Рёбра зверя",
+    "cat": 4,
+    "sprite": "ingredients/item5-1",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Пряное мясо",
+    "cat": 4,
+    "sprite": "ingredients/item5-2",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Лапка грифона",
+    "cat": 4,
+    "sprite": "ingredients/item5-3",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Крыло грифона",
+    "cat": 4,
+    "sprite": "ingredients/item5-4",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Филе ящера",
+    "cat": 4,
+    "sprite": "ingredients/item5-5",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Жир ящера",
+    "cat": 4,
+    "sprite": "ingredients/item5-6",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Охотничьи колбаски",
+    "cat": 4,
+    "sprite": "ingredients/item5-7",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Кусочки мяса",
+    "cat": 4,
+    "sprite": "ingredients/item5-8",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Окорок зверя",
+    "cat": 4,
+    "sprite": "ingredients/item5-9",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Рёбра вожака",
+    "cat": 4,
+    "sprite": "ingredients/item5-10",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Хвост ящера",
+    "cat": 4,
+    "sprite": "ingredients/item5-11",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Мешочек бобов",
+    "cat": 4,
+    "sprite": "ingredients/item5-12",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Вяленое мясо",
+    "cat": 4,
+    "sprite": "ingredients/item5-13",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Грудинка зверя",
+    "cat": 4,
+    "sprite": "ingredients/item5-14",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Мозговая кость",
+    "cat": 4,
+    "sprite": "ingredients/item5-15",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Сердце зверя",
+    "cat": 4,
+    "sprite": "ingredients/item5-16",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Печень зверя",
+    "cat": 4,
+    "sprite": "ingredients/item5-17",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Язык зверя",
+    "cat": 4,
+    "sprite": "ingredients/item5-18",
+    "organic": true,
+    "food": true
+  },
+  {
+    "name": "Рога быка",
+    "cat": 0,
+    "sprite": "ingredients/item6-0",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Клыки кабана",
+    "cat": 0,
+    "sprite": "ingredients/item6-1",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Когти чудовища",
+    "cat": 0,
+    "sprite": "ingredients/item6-2",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Пятнистая шкура",
+    "cat": 0,
+    "sprite": "ingredients/item6-3",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Белый мех",
+    "cat": 0,
+    "sprite": "ingredients/item6-4",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Кожа ящера",
+    "cat": 0,
+    "sprite": "ingredients/item6-5",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Красная чешуя",
+    "cat": 0,
+    "sprite": "ingredients/item6-6",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Пёстрые перья",
+    "cat": 0,
+    "sprite": "ingredients/item6-7",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Лапа хищника",
+    "cat": 0,
+    "sprite": "ingredients/item6-8",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Кости зверя",
+    "cat": 0,
+    "sprite": "ingredients/item6-9",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Череп дракончика",
+    "cat": 0,
+    "sprite": "ingredients/item6-10",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Спинные шипы",
+    "cat": 0,
+    "sprite": "ingredients/item6-11",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Крыло летучей мыши",
+    "cat": 0,
+    "sprite": "ingredients/item6-12",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Выделанная кожа",
+    "cat": 0,
+    "sprite": "ingredients/item6-13",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Обломки костей",
+    "cat": 0,
+    "sprite": "ingredients/item6-14",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Панцирь чудовища",
+    "cat": 0,
+    "sprite": "ingredients/item6-15",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Золотые рога",
+    "cat": 0,
+    "sprite": "ingredients/item6-16",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Голубая слизь",
+    "cat": 4,
+    "sprite": "ingredients/item7-0",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Болотная слизь",
+    "cat": 0,
+    "sprite": "ingredients/item7-1",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Ядовитая железа",
+    "cat": 0,
+    "sprite": "ingredients/item7-2",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Глаза чудовища",
+    "cat": 4,
+    "sprite": "ingredients/item7-3",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Магическое ядро",
+    "cat": 0,
+    "sprite": "ingredients/item7-4",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Огненная печень",
+    "cat": 4,
+    "sprite": "ingredients/item7-5",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Сердце чудовища",
+    "cat": 4,
+    "sprite": "ingredients/item7-6",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Ядовитый клык",
+    "cat": 4,
+    "sprite": "ingredients/item7-7",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Паучий шёлк",
+    "cat": 0,
+    "sprite": "ingredients/item7-8",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Яйцо дракончика",
+    "cat": 4,
+    "sprite": "ingredients/item7-9",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Кристальная кость",
+    "cat": 4,
+    "sprite": "ingredients/item7-10",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Кровь чудовища",
+    "cat": 4,
+    "sprite": "ingredients/item7-11",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Ледяные перья",
+    "cat": 0,
+    "sprite": "ingredients/item7-12",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Ледяная железа",
+    "cat": 0,
+    "sprite": "ingredients/item7-13",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Огненная плоть",
+    "cat": 4,
+    "sprite": "ingredients/item7-14",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Теневой рог",
+    "cat": 4,
+    "sprite": "ingredients/item7-15",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Синяя чешуя",
+    "cat": 4,
+    "sprite": "ingredients/item7-16",
+    "organic": true,
+    "food": false
+  },
+  {
+    "name": "Золотой жир",
+    "cat": 4,
+    "sprite": "ingredients/item7-17",
+    "organic": true,
+    "food": false
+  }
+]

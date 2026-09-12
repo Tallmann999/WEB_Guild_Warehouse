@@ -7,6 +7,19 @@
 .item.dragging{z-index:300000!important}
 #effects{position:absolute;inset:0;pointer-events:none;z-index:75}
 #modal{z-index:90}
+#tooltip:not(.hidden){display:block;z-index:110;white-space:nowrap;max-width:300px;padding:6px 10px;color:#fff0d0;font:14px Arial;box-shadow:0 4px 10px #0006}
+#orderBoard{position:absolute;right:24px;top:28px;width:245px;max-height:350px;overflow-y:auto;z-index:4;display:grid;gap:8px;padding:12px;background:#302419dc;border:1px solid #ac8954;border-radius:6px;scrollbar-width:thin}
+#orderBoard h3{margin:0 0 4px;font-size:18px;display:flex;justify-content:space-between;color:#f0d397}
+.order-card{width:100%;padding:9px 12px;text-align:left;background:#ddc59a;color:#3b2a18;border:1px solid #aa8550;box-shadow:0 2px 3px #160d0866;font-size:16px}
+.order-card strong{display:block}
+.order-card>span{display:flex;gap:5px;margin:4px 0}
+.order-card img{width:34px;height:34px;object-fit:contain}
+.order-card small{display:block;font:12px Arial;color:#64462a}
+.brief-list span small{display:block;font:12px Arial;color:#79603d;margin-top:4px}
+.order-brief .modal-card{background:#ddc9a2;color:#3b2a18;border:2px solid #a68651;border-radius:6px}
+.order-brief h2,.order-brief .modal-card p,.order-brief .brief-list b{color:#3b2a18}
+.order-brief .brief-eyebrow{color:#735331}
+.order-brief #beginAssembly{width:100%}
 .modal-card{max-height:760px;overflow:auto}
 #receptionAction{left:435px;right:auto;bottom:40px;width:330px}
 #receptionAction button{width:100%;font-size:17px}
@@ -54,9 +67,9 @@ footer nav{gap:6px}footer nav button{padding:10px;font-size:14px}
 #sweepButton{padding-left:48px!important;background-image:url('assets/storage/cart.png'),linear-gradient(#554233,#2f2825);background-position:8px center,center;background-size:32px 32px,100% 100%;background-repeat:no-repeat}
 #parcelDrop{background:transparent url('assets/storage/box-top.png') center/100% 100% no-repeat;border:0;border-radius:0;box-shadow:none}
 #parcelDrop.drop-ready{background:transparent url('assets/storage/box-top.png') center/100% 100% no-repeat}
-#packedItems{inset:24px;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:38px;align-content:start;gap:1px;overflow:hidden}
-#packedItems img{position:static;width:100%;height:38px;object-fit:contain}
-#orderReward{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:560px;padding:30px;text-align:center;color:#ffe477;background:radial-gradient(ellipse,#654712ed,#271e12e8 75%);border:1px solid #eac65b;border-radius:12px;box-shadow:0 0 55px #ffcc4560;text-shadow:0 0 14px #ffbf4570;animation:orderRewardIn .25s ease-out}
+#packedItems{inset:45px 24px 15px;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:35px;align-content:start;gap:1px;overflow:hidden}
+#packedItems img{position:static;width:100%;height:35px;object-fit:contain}
+#orderReward{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:560px;padding:30px;text-align:center;color:#ffe477;background:radial-gradient(ellipse,#654712ed,#271e12e8 75%);border:1px solid #eac65b;border-radius:12px;box-shadow:0 0 55px #ffcc4560;text-shadow:0 0 14px #ffbf4570;animation:orderRewardFade 2s linear forwards}
 #orderReward span{display:block;font-size:18px;margin-bottom:14px}
 #orderReward strong{display:block;font-size:28px;line-height:1.5}
 #orderReward b{display:block;margin-top:14px;font-size:20px}
@@ -70,7 +83,17 @@ footer nav{gap:6px}footer nav button{padding:10px;font-size:14px}
 .sorting #pile .item{width:88px;height:88px}
 .fulfillment #table{top:250px}
 .fulfillment #sourceBox{left:27%;width:41%}
-#arrivalSignal{position:absolute;top:218px;left:28px;z-index:6;padding:7px 14px;font-size:15px;border-color:#d4b96e;background:#534226}
+#arrivalSignal{position:absolute;top:auto;bottom:12px;left:28px;z-index:60;width:335px;min-height:90px;display:flex;align-items:center;gap:14px;padding:12px 16px;text-align:left;border-color:#e6bf61;background:linear-gradient(120deg,#594323f5,#302519f5);box-shadow:0 0 22px #eebd4140,0 5px 14px #160e09aa}
+#arrivalSignal.waiting{animation:visitorNoticeIn .4s ease-out}
+.arrival-mark{flex:0 0 50px;width:50px;height:50px;display:grid;place-items:center;font:bold 50px/1 Georgia;color:#ffe17c;text-shadow:0 0 15px #ffbf35;animation:visitorMarkGlow 1.8s ease-in-out infinite alternate}
+.arrival-copy{display:grid;gap:5px}
+.arrival-copy strong{font-size:18px;color:#ffe39b}
+.arrival-copy>span{font:13px/1.25 Arial;color:#f2dfbd}
+.arrival-copy small{font:12px Arial;color:#d8c39e}
+@keyframes visitorNoticeIn{from{opacity:0;translate:-25px 8px}to{opacity:1;translate:0 0}}
+@keyframes visitorMarkGlow{from{opacity:.75;text-shadow:0 0 5px #ffbf35}to{opacity:1;text-shadow:0 0 18px #ffbf35}}
+.flying-loot{position:absolute;width:78px;height:78px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 7px 5px #1d100970);will-change:transform,opacity}
+.shelf-box.sort-received .boxart{filter:drop-shadow(0 0 12px #ffdb73)}
 #sweepButton{position:absolute;top:218px;right:28px;z-index:6;padding:7px 14px;font-size:15px}
 #boxMenu,#sortingDone{display:none!important}
 #inspector{left:50%;top:245px;width:550px;height:345px}
@@ -115,3 +138,103 @@ footer nav{gap:6px}footer nav button{padding:10px;font-size:14px}
 .portrait-note{display:none}
 @media (orientation:portrait) and (max-width:700px){.portrait-note{position:fixed;top:15px;left:15px;right:15px;text-align:center;display:block;font:16px/1.5 Arial;color:#e8d4ac}}
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@font-face{font-family:'Roboto Condensed';src:url('assets/fonts/RobotoCondensed-Variable.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
+html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',sans-serif!important}
+.sorting #pileCaption{display:none}
+.inspection-heading,.source-heading{position:relative}
+.inspection-heading>div,.source-heading>div{width:100%;text-align:center}
+.inspection-heading h2,.source-heading b{display:block;margin:0;font-size:22px;font-weight:600}
+.inspection-heading .red-close,.source-heading .red-close{position:absolute;right:28px;top:24px}
+#targetPreview header{position:relative;justify-content:center}
+#targetPreview header>span{font-size:22px;font-weight:600;text-align:center}
+#targetPreview header>button{position:absolute;right:28px;top:24px}
+.box-title{position:absolute;top:19px;left:20px;right:20px;text-align:center;color:#432b18;font-size:18px;font-weight:600}
+@keyframes orderRewardFade{0%,50%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){#orderReward{animation-duration:2s!important}}
+/* Compact HUD and two shelf levels, with the lower shelf just above the table. */
+#game>header{height:77px;padding:9px 24px;gap:22px}
+#game>header .brand img{width:58px;height:58px}
+#game>header .brand strong{font-size:22px}
+#game>header .brand span{font-size:11px}
+#game>header .day b{font-size:17px}
+#game>header .day span{font-size:13px}
+#game>header .stat img{width:35px;height:35px}
+#game>header .stat:not(.rep) b{font-size:23px}
+#game>header .rep b{font-size:14px}
+#game>header .icon{width:38px;height:38px;padding:7px}
+#game>footer{height:70px;padding:10px 22px}
+#game>footer nav button{padding:9px;font-size:13px}
+#game>footer #stepHint{font-size:13px}
+#game>.scene{top:77px;bottom:70px}
+.work-heading{height:62px;padding:10px 24px}
+.work-heading h1{font-size:18px}
+#shelves{position:absolute;top:65px;left:0;right:0;height:228px;display:grid;grid-template-rows:110px 110px;gap:8px}
+.shelf-row{position:relative;display:grid;grid-template-columns:repeat(6,142px);gap:18px;justify-content:center;align-items:end;padding-bottom:6px}
+.shelf-row::after{content:'';position:absolute;left:-12px;right:-12px;bottom:0;height:10px;border:1px solid #342117;background:linear-gradient(#a38555,#62452c);box-shadow:0 7px 9px #0006;z-index:-1}
+#work>.shelf-plank{display:none}
+.shelf-row .shelf-box{width:142px;height:103px}
+.shelf-row .shelf-box img.boxart{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:block;width:94px;height:78px;margin:0;object-fit:contain}
+.shelf-row .shelf-box .tag{min-height:24px;bottom:0;padding:2px;gap:5px;font-size:14px;white-space:nowrap}
+.shelf-count{font-size:13px;font-weight:400;color:#e8ce92}
+.shelf-placeholder{opacity:.22;pointer-events:none;padding-bottom:24px}
+#work #table{left:85px;right:85px;top:326px;bottom:auto;height:304px;border-width:11px}
+.sorting.has-note #pile{right:280px}
+.sorting #pile .item{width:79px;height:79px}
+.sorting #checklist{width:256px;top:10px;bottom:9px;font-size:13px}
+#checklist h3{font-size:18px}
+#checklist .check-row{min-height:39px}
+#checklist button{padding:7px;font-size:14px}
+#sweepButton{top:297px;right:86px;padding:3px 12px 3px 42px!important;font-size:13px;background-size:25px 25px,100% 100%}
+#inspector{top:326px;width:495px;height:304px}
+#inspector.junk-open{width:436px}
+#targetPreview{top:326px;width:436px;height:304px}
+#targetPreview .target-items{height:200px}
+#parcelDrop{width:206px;height:189px}
+#packedItems{inset:40px 22px 15px;grid-auto-rows:31px}
+#packedItems img{height:31px}
+#workHint{font-size:13px}
+.upgrade-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.upgrade-card{display:flex;flex-direction:column;align-items:center;text-align:center;border:1px solid #ac8952;border-radius:8px;padding:14px;background:#33281e}
+.upgrade-card>img{width:80px;height:85px;object-fit:contain}
+.upgrade-card h3{margin:8px 0;font-size:20px;color:#efcf83}
+.upgrade-card p{font-size:15px;line-height:1.3;margin:0 0 12px;flex:1}
+.upgrade-card button{width:100%;font-size:16px;padding:9px}
+#bag.premium{width:183px;height:213px;filter:drop-shadow(0 0 10px #aa72d366)}
+.accepted-order-list{display:grid;gap:12px}
+.accepted-order-list button{display:grid;gap:8px;text-align:left;padding:16px}
+.accepted-order-list strong{font-size:20px;color:#f1d18b}
+.accepted-order-list span{font-size:16px;font-weight:400}
+#sortingReward{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);width:510px;padding:26px;text-align:center;background:#ffe391;color:#52350c;border:2px solid #e9b83e;border-radius:12px;box-shadow:0 10px 40px #0008,0 0 30px #ffd45c66;z-index:1000;pointer-events:none;animation:sortingRewardFade 1.5s linear forwards}
+#sortingReward strong{display:block;font-size:25px}
+#sortingReward b{display:block;margin-top:12px;font-size:34px}
+@keyframes sortingRewardFade{0%,66.67%{opacity:1}100%{opacity:0}}
+.summary-grid>div{font-size:20px;line-height:1.3;padding:16px}
+.summary-grid>div b{display:block;font-size:42px;line-height:1.15;margin:9px 0;color:#ffdb7d}
+.summary-highlight{animation:summaryPulse 1.2s ease-in-out 1}
+@keyframes summaryPulse{0%,100%{background-color:transparent;box-shadow:none;transform:scale(1)}45%{background-color:#b18a35;box-shadow:0 0 22px #ffce5f88;transform:scale(1.035)}}
+#inspector{left:85px;transform:none;width:calc(100% - 170px)}
+#inspector.junk-open{left:85px;width:540px}
+#targetPreview{left:645px;width:548px}
+#inspectScroll{top:76px;bottom:42px}
+#inspectItems{min-height:180px}
+#inspectItems .item,#sourceItems .item{width:60px;height:60px;padding:3px}
+#targetPreview img{width:56px;height:56px}
+.fulfillment #sourceBox{left:230px;right:305px;width:auto}
+#goldAdButton{position:absolute;left:85px;top:297px;padding:3px 12px;font-size:14px;z-index:20}
+@media(prefers-reduced-motion:reduce){.summary-highlight{animation:none;background-color:#6c542c}}
+#goldAdButton{position:static;flex-shrink:0;padding:8px 10px;font-size:14px;max-width:245px}
+#receptionGoldAd{position:absolute;right:30px;bottom:22px;z-index:25;padding:12px 16px;font-size:16px}
+/* Match the assembly box and keep every item inside its wooden rim. */
+#inspector:not(.junk-open){left:101px;transform:none;top:338px;width:calc(100% - 202px);height:280px}
+#inspector:not(.junk-open) .inspection-heading{height:74px;padding:24px 28px 6px}
+#inspector:not(.junk-open) .inspection-note{display:none}
+#inspectScroll,#sourceScroll{left:10%;right:10%;top:72px;bottom:28px;overflow:auto}
+#targetPreview .target-items{margin-left:10%;margin-right:10%}
+.mystery-item{position:relative}
+.mystery-item>img{filter:brightness(0)!important;opacity:1!important}
+.mystery-question{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:32px;font-weight:800;font-style:normal;color:white;text-shadow:0 2px 4px black;pointer-events:none}
+.collection-item .mystery-question{top:44px}
+.unknown-preview{width:160px;height:160px;margin:15px auto}
+.unknown-preview img{width:100%;height:100%;object-fit:contain}
+.unknown-preview .mystery-question{font-size:60px}
+.reward-coin{position:fixed;z-index:2147483647;pointer-events:none;color:#ffd248;font-size:30px;line-height:1;text-shadow:0 2px #9d5f12,0 0 8px #ffe985}

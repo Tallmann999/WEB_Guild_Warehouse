@@ -7,7 +7,7 @@ const shots=path.resolve(__dirname,'../audit_source');
 (async()=>{
  const browser=await chromium.launch({channel:'msedge',headless:true});
  const page=await browser.newPage({viewport:{width:1280,height:800}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(url);await page.locator('#startGame').click();await page.locator('#buyBag').click();
+ await page.goto(url);await page.locator('#startGame').click();await page.locator('#buyBag').click();await page.evaluate(()=>{state.seconds=CONFIG.daySeconds-INTRO_TIMING[state.day].orders[0];tickArrivals();});
  assert.equal(await page.evaluate(()=>state.gold),70);
  // Wrong classification retains the item and does not charge the player.
  await page.evaluate(()=>{state.selected=state.bag[0].uid;selectBox((items[state.bag[0].type].cat+1)%4)});

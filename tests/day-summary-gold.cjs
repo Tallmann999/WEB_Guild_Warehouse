@@ -1,0 +1,20 @@
+const {chromium}=require('C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict'),path=require('node:path');
+(async()=>{const b=await chromium.launch({channel:'msedge',headless:true});try{
+ const p=await b.newPage({viewport:{width:1280,height:800}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('file:///'+path.resolve('dist/index.html').replaceAll('\\','/'));
+ await p.evaluate(()=>{state=freshState();state.started=true;planDay();state.gold=10;setScreen('work','sort');});
+ await p.locator('#goldAdButton').click();assert.equal(await p.locator('#claimAdGold').isDisabled(),true);await p.locator('#closeModal').click();assert.equal(await p.evaluate(()=>state.gold),10);
+ await p.locator('#goldAdButton').click();await p.locator('#claimAdGold').click();assert.equal(await p.evaluate(()=>state.gold),25);
+ await p.evaluate(()=>{state.stock=Array.from({length:70},()=>makeItem(30));renderWork();openInspection(4);});
+ const table=await p.locator('#table').boundingBox(),box=await p.locator('#inspector').boundingBox();assert.ok(Math.abs(box.width-table.width)<2);assert.equal(await p.locator('#inspectItems .item').first().evaluate(n=>n.offsetWidth),60);
+ assert.ok(await p.evaluate(()=>new Set([...document.querySelectorAll('#inspectItems .item')].map(n=>n.style.left)).size>=14));
+ await p.screenshot({path:'audit_source/wide-inventory.png'});
+ await p.evaluate(()=>{closeInspection();state.order={id:1,recipe:[{type:30,count:2}],packed:[],accepted:true,customer:0,reward:20,originalReward:20};state.orders=[state.order];setScreen('work','order');selectBox(4);});
+ await p.locator('#goldAdButton').click();await p.locator('#claimAdGold').click();assert.equal(await p.evaluate(()=>state.gold),40);
+ await p.locator('#sourceItems .item').first().click();assert.equal(await p.evaluate(()=>state.order.packed.length),1);
+ await p.screenshot({path:'audit_source/compact-order-items.png'});
+ await p.evaluate(()=>{state.collection=[30];state.dayIncome=85;state.daySpent=70;state.dayOrders=3;showSummary();});
+ assert.equal(await p.locator('.summary-highlight').count(),4);assert.equal(await p.locator('.summary-grid b').first().evaluate(n=>getComputedStyle(n).fontSize),'42px');
+ await p.waitForTimeout(1300);await p.screenshot({path:'audit_source/large-day-summary.png'});
+ assert.deepEqual(errors,[]);console.log('PASS: summary highlight and large stats, full-width compact inventory, source packing, ad +15 in both modes and no reward on cancel');
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});
