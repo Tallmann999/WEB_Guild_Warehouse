@@ -302,7 +302,7 @@
   },
   {
     "name": "Ядовитый клык",
-    "cat": 4,
+    "cat": 0,
     "sprite": "ingredients/item7-7",
     "organic": true,
     "food": false
@@ -358,7 +358,7 @@
   },
   {
     "name": "Теневой рог",
-    "cat": 4,
+    "cat": 0,
     "sprite": "ingredients/item7-15",
     "organic": true,
     "food": false

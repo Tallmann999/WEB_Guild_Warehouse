@@ -188,7 +188,7 @@ function renderReception(){
     if(!state.bag.length||!offer)button(action,'К столу и коробкам',()=>setScreen('work','sort'),'goWork');
     if(!state.schedule.length&&!state.offers.length&&!state.orderSchedule?.length)button(action,'Закончить день',requestEndDay,'closeDay',!!state.bag.length);
   }
-  $('stepHint').textContent=state.started?'Мешок → ваш порядок → заказы → развитие лавки':'Наведите порядок среди находок и познакомьтесь с гильдией.';
+  $('stepHint').textContent='';
 }
 function planDay(firstArrival=0){
   state.dayCollectionStart=state.collection.length;
@@ -200,7 +200,7 @@ function planDay(firstArrival=0){
   for(let i=0;i<n;i++){const big=state.day===2&&i===2;state.schedule.push({at:timing?timing.adventurers[i]:i===0?firstArrival:Math.round(i*140/(n-1)),visitor:(state.day+i-1)%adventurers.length,big,loot:makeLoot(big)});}
   guaranteeOrder();tickArrivals();
 }
-function startGame(){state=freshState();state.started=true;last=performance.now();planDay(2);render();save();}
+function startGame(){state=freshState();state.started=true;last=performance.now();planDay(2);startTutorial();render();save();}
 function tickArrivals(){
   let changed=false;
   const now=CONFIG.daySeconds-state.seconds;let orderDeferred=false;
@@ -219,8 +219,8 @@ function buyBag(){
   prepareOffer(state.offers[0]);if(state.gold<state.offers[0].price)return;
   const offer=state.offers.shift();state.gold-=offer.price;state.daySpent+=offer.price;state.dayBought++;
   state.bag.push(...offer.loot);state.combo=0;trackSortingBag(offer.loot);
-  for(const x of offer.loot)x.tablePos={x:Math.random()*.88,y:Math.random()*.74};
-  if(!INTRO_TIMING[state.day]&&!allOrders().some(o=>o.accepted===false)&&(!allOrders().length||state.offers.length||state.schedule.length))createOrder();setScreen('work','sort');beep();toast('Мешок ваш. Разложите находки по коробкам.');
+  for(const [i,x] of offer.loot.entries())x.tablePos=offer.tutorial?{x:.12+i*.22,y:.35}:{x:Math.random()*.88,y:Math.random()*.74};
+  if(!INTRO_TIMING[state.day]&&!allOrders().some(o=>o.accepted===false)&&(!allOrders().length||state.offers.length||state.schedule.length))createOrder();setScreen('work','sort');beep();
 }
 function advanceReadyVisitor(dt){
   if(!INTRO_TIMING[state.day]||!state.dayBought||(state.bag.length&&state.screen!=='reception')||state.offers.length||allOrders().some(o=>o.accepted===false)){
@@ -276,11 +276,12 @@ function renderWork(){
   renderShelves();$('pile').innerHTML='';if(sort)renderItems($('pile'),state.bag,'table');
   $('boxZone').innerHTML='';$('sourceBox').innerHTML='';hidden('sourceBox',true);
   if(!sort){
-    $('boxZone').innerHTML='<div id="parcelDrop" aria-label="Открытая коробка для заказа"><span class="box-title">Поручение</span><div id="packedItems"></div></div>';
-    for(const x of (state.order?.packed||[])){const im=document.createElement('img');im.src=asset(items[x.type].sprite);im.alt=items[x.type].name;$('packedItems').append(im);}
+    $('boxZone').innerHTML='<div id="parcelDrop" aria-label="Открытая коробка для заказа"><span class="box-title">Поручение</span><button id="tidyParcel" class="tidy-box">Сортировать</button><button id="closeParcel" class="red-close" aria-label="Закрыть посылку">×</button><div id="packedScroll"><div id="packedItems"></div></div></div>';
+    renderItems($('packedItems'),state.order?.packed||[],'packed');
+    $('tidyParcel').onclick=()=>arrangeBox($('packedItems'),state.order.packed,'packed');$('closeParcel').onclick=()=>setScreen('work','sort');
     hidden('sourceBox',false);
     if(state.activeCat===null){$('sourceBox').className='source-placeholder';$('sourceBox').textContent='Откройте нужную коробку на полке';}
-    else{$('sourceBox').className='source-open';$('sourceBox').innerHTML=`<div class="source-heading"><div><b>${categories[state.activeCat].name}</b></div><button id="closeSource" class="red-close" aria-label="Закрыть коробку">×</button></div><div id="sourceScroll"><div id="sourceItems"></div></div>`;$('closeSource').onclick=()=>{state.activeCat=null;renderWork();};renderItems($('sourceItems'),stockFor(state.activeCat),'source');}
+    else{$('sourceBox').className='source-open';$('sourceBox').innerHTML=`<div class="source-heading"><div><b>${categories[state.activeCat].name}</b></div><button id="tidySource" class="tidy-box">Сортировать ящик</button><button id="closeSource" class="red-close" aria-label="Закрыть коробку">×</button></div><div id="sourceScroll"><div id="sourceItems"></div></div>`;$('closeSource').onclick=()=>{state.activeCat=null;renderWork();};$('tidySource').onclick=()=>arrangeBox($('sourceItems'),stockFor(state.activeCat),'source');renderItems($('sourceItems'),stockFor(state.activeCat),'source');}
   }
   renderChecklist();hidden('autoSortButton',!sort);$('autoSortButton').disabled=!state.bag.length||state.autoSorting;
   hidden('sweepButton',!sort||!state.upgrade);$('sweepButton').disabled=!state.bag.length;
@@ -313,31 +314,41 @@ function renderChecklist(){
   else if(orderComplete())button(actions,state.activeCat===null?'Выдать посылку':'Сначала закройте коробку',finishOrder,'ship',state.activeCat!==null).className='primary';
   else button(actions,'Вернуться к сортировке',()=>setScreen('work','sort'),'backSort');
 }
+function itemPositionKey(kind){return kind==='table'?'tablePos':kind==='packed'?'parcelPos':'boxPos';}
+function arrangeBox(area,list,kind){
+  if(state.paused||state.autoSorting)return;
+  const width=area.clientWidth,size=60,columns=Math.max(1,Math.floor((width-20)/68)),key=itemPositionKey(kind);
+  const ordered=[...list].sort((a,b)=>(isUnknown(a)?'Неизвестная находка':items[a.type].name).localeCompare(isUnknown(b)?'Неизвестная находка':items[b.type].name,'ru')||a.uid-b.uid);
+  ordered.forEach((x,i)=>{x[key]={x:(i%columns)*68/Math.max(1,width-size-20),y:8+Math.floor(i/columns)*68};x.boxAngle=0;});
+  area.innerHTML='';renderItems(area,list,kind);area.parentElement.scrollTop=0;save();
+}
 function renderItems(area,list,kind){
   hidden('tooltip',true);
   area.classList.toggle('crowded-pile',kind==='table'&&list.length>20);
-  if(!list.length){area.innerHTML='<div class="empty-pile">Здесь пока пусто</div>';return;}
+  if(!list.length){area.style.height='100%';area.innerHTML='<div class="empty-pile">Здесь пока пусто</div>';return;}
   const table=kind==='table',size=table?79:60,width=area.clientWidth||450,columns=Math.max(1,Math.floor((width-20)/68));
+  const key=itemPositionKey(kind);
   list.forEach((x,i)=>{
-    if(!table)x.boxPos={x:(i%columns)*68/Math.max(1,width-size-20),y:Math.floor(i/columns)*68};
-    const pos=table?(x.tablePos||{x:Math.random()*.8,y:Math.random()*.7}):x.boxPos;
+    if(!table&&!x[key])x[key]={x:(i%columns)*68/Math.max(1,width-size-20),y:8+Math.floor(i/columns)*68};
+    const pos=table?(x.tablePos||{x:Math.random()*.8,y:Math.random()*.7}):x[key];
+    if(!table){pos.x=Math.max(0,Math.min(1,pos.x));pos.y=Math.max(8,pos.y);}
     if(table)x.tablePos=pos;
     const b=button(area,'',()=>clickItem(x,kind));b.className='item'+(state.selected===x.uid?' chosen':'');b.dataset.uid=x.uid;b.dataset.kind=kind;
     const unknown=isUnknown(x);b.classList.toggle('mystery-item',unknown);
     b.setAttribute('aria-label',unknown?'Неизвестная находка':items[x.type].name);
     b.innerHTML=`<img src="${asset(items[x.type].sprite)}" alt="${unknown?'Неизвестная находка':items[x.type].name}" draggable="false">${unknown?'<span class="mystery-question">?</span>':''}`;
     b.style.left=(10+pos.x*Math.max(1,width-size-20))+'px';b.style.top=(table?10+pos.y*Math.max(1,area.clientHeight-size-20):pos.y)+'px';
-    b.style.transform=`rotate(${x.uid%21-10}deg)`;b.style.zIndex=x.depth||i+1;
+    b.style.transform=`rotate(${!table&&x.boxAngle!==undefined?x.boxAngle:x.uid%21-10}deg)`;b.style.zIndex=x.depth||i+1;
     b.onpointerdown=e=>pointerDown(e,x,b,kind);
   });
-  if(!table)area.style.height=Math.max(180,...list.map(x=>x.boxPos.y+size+20))+'px';
+  if(!table)area.style.height=Math.max(area.parentElement.clientHeight,...list.map(x=>x[key].y+size+12))+'px';
 }
 function clickItem(x,kind){
   if(performance.now()<suppressUntil||state.paused||state.autoSorting)return;
   if(isUnknown(x)){openUnknown(x);return;}
-  if(state.inspectCat!==null&&kind!=='inspect'&&kind!=='junk')return;
+  if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
   if(kind==='source'){packItem(x.uid);return;}
-  if(kind==='inspect'){toast(`${items[x.type].name} · передвигайте внутри коробки`);return;}
+  if(['inspect','target','packed'].includes(kind))return;
   state.selected=state.selected===x.uid?null:x.uid;
   if(kind==='junk'){renderInspection();toast('Выберите коробку на полке или нажмите «Переложить»');}else renderWork();
 }
@@ -429,13 +440,14 @@ function openInspection(cat){if(state.paused||state.autoSorting||!state.started)
 function renderInspection(){const cat=state.inspectCat;if(cat===null)return;const list=cat==='junk'?state.junk:stockFor(cat);$('inspectTitle').textContent=`${cat==='junk'?'Диковинки':categories[cat].name}`;$('inspectItems').innerHTML='';renderItems($('inspectItems'),list,cat==='junk'?'junk':'inspect');$('inspector').querySelector('.inspection-note').textContent=cat==='junk'?'Выберите вещь и перенесите в коробку справа.':'Двигайте вещи · для очистки откройте коллекцию.';}
 function renderTarget(){
   const show=state.inspectCat==='junk';hidden('targetPreview',!show);if(!show)return;
-  const cat=state.targetCat,area=$('targetPreview');area.innerHTML=`<header><span>${categories[cat].name}</span><button id="moveSelected" style="font-size:14px;padding:7px">Переложить →</button></header><div class="target-items">${stockFor(cat).map(x=>`<img src="${asset(items[x.type].sprite)}" alt="${items[x.type].name}">`).join('')||'<div class="target-empty">Перетащите сюда вещь из «Диковинок». Другую коробку выберите на полке.</div>'}</div>`;
+  const cat=state.targetCat,area=$('targetPreview');area.innerHTML=`<header><span>${categories[cat].name}</span><button id="moveSelected">Переложить →</button><button id="tidyTarget" class="tidy-box">Сортировать ящик</button><button id="closeTarget" class="red-close" aria-label="Закрыть коробки">×</button></header><div id="targetScroll"><div id="targetItems"></div></div>`;
+  renderItems($('targetItems'),stockFor(cat),'target');$('tidyTarget').onclick=()=>arrangeBox($('targetItems'),stockFor(cat),'target');$('closeTarget').onclick=closeInspection;
   $('moveSelected').disabled=state.selected===null;$('moveSelected').onclick=()=>sortItem(state.selected,state.targetCat);
 }
 function closeInspection(){cancelDrag();state.inspectCat=null;state.selected=null;hidden('inspector',true);hidden('targetPreview',true);renderWork();}
 function pointerDown(e,x,node,kind){
   if(e.button!==0||state.paused||state.autoSorting)return;
-  if(state.inspectCat!==null&&kind!=='inspect'&&kind!=='junk')return;
+  if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
   const r=node.getBoundingClientRect();drag={uid:x.uid,item:x,node,kind,x:e.clientX,y:e.clientY,grabX:(e.clientX-r.left)/scale,grabY:(e.clientY-r.top)/scale,active:false};node.setPointerCapture(e.pointerId);
 }
 function cancelDrag(){if(drag){drag.ghost?.remove();drag.node.style.opacity='';drag=null;}}
@@ -444,7 +456,7 @@ addEventListener('pointermove',e=>{
   if(!drag)return;if(!drag.active&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;
   if(!drag.active){drag.active=true;drag.ghost=drag.node.cloneNode(true);drag.ghost.classList.add('dragging');drag.ghost.classList.remove('chosen');drag.ghost.style.opacity='1';drag.ghost.style.transform='none';drag.ghost.style.width=drag.node.getBoundingClientRect().width+'px';drag.ghost.style.height=drag.node.getBoundingClientRect().height+'px';document.body.append(drag.ghost);drag.node.style.opacity='0';}
   drag.ghost.style.left=e.clientX-drag.grabX*scale+'px';drag.ghost.style.top=e.clientY-drag.grabY*scale+'px';
-  const scroll=drag.kind==='table'?$('pile'):drag.kind==='inspect'||drag.kind==='junk'?$('inspectScroll'):$('sourceScroll');
+  const scroll=drag.kind==='table'?$('pile'):drag.node.parentElement.parentElement;
   if(scroll&&inside(scroll,e.clientX,e.clientY)){const r=scroll.getBoundingClientRect();if(e.clientY>r.bottom-20*scale)scroll.scrollTop+=10;if(e.clientY<r.top+20*scale)scroll.scrollTop-=10;}
 });
 addEventListener('pointerup',e=>{
@@ -460,9 +472,11 @@ addEventListener('pointerup',e=>{
     const r=area.getBoundingClientRect(),size=d.kind==='table'?79:60;
     const pos={x:Math.max(0,Math.min(1,((e.clientX-r.left)/scale-d.grabX-10)/Math.max(1,area.clientWidth-size-20))),y:0};
     if(d.kind==='table')pos.y=Math.max(0,Math.min(1,((e.clientY-r.top)/scale-d.grabY-10)/Math.max(1,area.clientHeight-size-20)));
-    else pos.y=Math.max(0,Math.min(area.clientHeight-size,(e.clientY-r.top)/scale-d.grabY));
-    d.item[d.kind==='table'?'tablePos':'boxPos']=pos;d.item.depth=++depth;state.selected=null;
-    if(state.inspectCat!==null)renderInspection();else renderWork();save();
+    else pos.y=Math.max(8,Math.min(area.clientHeight-size-12,(e.clientY-r.top)/scale-d.grabY));
+    d.item[itemPositionKey(d.kind)]=pos;d.item.depth=++depth;state.selected=null;
+    const scrollTop=pane.scrollTop,paneId=pane.id;
+    if(state.inspectCat!==null){renderInspection();renderTarget();}else renderWork();
+    if($(paneId))$(paneId).scrollTop=scrollTop;save();
   }else toast('Вещь осталась на прежнем месте.');
 });
 addEventListener('pointercancel',cancelDrag);
@@ -590,6 +604,7 @@ function setup(){
   $('autoSortButton').parentElement.insertBefore(goldAd,$('autoSortButton'));
   const receptionGoldAd=button($('reception'),'▶ Посмотреть рекламу · +15 монет',showGoldAd,'receptionGoldAd');receptionGoldAd.className='gold hidden';
   const target=document.createElement('section');target.id='targetPreview';target.className='hidden';$('work').append(target);
+  const tidyInspector=button($('closeInspector').parentElement,'Сортировать ящик',()=>arrangeBox($('inspectItems'),state.inspectCat==='junk'?state.junk:stockFor(state.inspectCat),state.inspectCat==='junk'?'junk':'inspect'),'tidyInspector');tidyInspector.className='tidy-box';
   const note=document.createElement('div');note.className='portrait-note';note.textContent='Поверните телефон горизонтально — так удобнее раскладывать находки.';document.body.append(note);
   $('back').onclick=()=>setScreen('reception');$('bag').onclick=buyBag;$('parcel').onclick=openOrder;$('closeInspector').onclick=closeInspection;
   $('closeModal').onclick=closeModal;$('autoSortButton').onclick=showAutoSortAd;$('ordersNav').onclick=showOrders;$('help').onclick=help;
@@ -609,6 +624,6 @@ addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(state.inspectCat!==null)closeInspection();else if(state.selected!==null){state.selected=null;renderWork();}else if(state.activeCat!==null){state.activeCat=null;renderWork();}else if(state.screen==='work')setScreen('reception');}
 });
 document.addEventListener('visibilitychange',()=>{last=performance.now();save();});addEventListener('pagehide',save);addEventListener('resize',resize);
-function tick(now){const dt=Math.min(1,(now-last)/1000);last=now;if(state.started&&!state.paused&&!state.ended&&!state.autoSorting&&!document.hidden){state.seconds=Math.max(0,state.seconds-dt*(state.screen==='work'?CONFIG.workTimeRate:1));tickArrivals();advanceReadyVisitor(dt);updateHud();saveClock+=dt;if(saveClock>=5){saveClock=0;save();}}requestAnimationFrame(tick);}
+function tick(now){const dt=Math.min(1,(now-last)/1000);last=now;if(state.started&&!state.paused&&!state.ended&&!state.autoSorting&&!document.hidden){if(!state.tutorial?.active){state.seconds=Math.max(0,state.seconds-dt*(state.screen==='work'?CONFIG.workTimeRate:1));tickArrivals();advanceReadyVisitor(dt);}updateHud();saveClock+=dt;if(saveClock>=5){saveClock=0;save();}}tutorialFrame();requestAnimationFrame(tick);}
 
 setup();resize();render();requestAnimationFrame(tick);

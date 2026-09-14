@@ -36,7 +36,7 @@ const sheets={
    for(const group of groups)if(group.length<cutoff)for(const q of group)data[q*4+3]=0;
    const sprite=`ingredients/item${sheet}-${index++}`;
    await sharp(data,{raw:{width,height,channels:4}}).trim({background:'#00000000'}).extend({top:4,bottom:4,left:4,right:4,background:'#00000000'}).png().toFile(path.resolve(__dirname,'../dist/assets',sprite+'.png'));
-   entries.push({name:names[i],cat:sheet==='6'||['Паучий шёлк','Ядовитая железа','Болотная слизь','Ледяные перья','Ледяная железа','Магическое ядро'].includes(names[i])?0:4,sprite,organic:true,food:sheet==='5'});
+   entries.push({name:names[i],cat:sheet==='6'||['Теневой рог','Ядовитый клык','Паучий шёлк','Ядовитая железа','Болотная слизь','Ледяные перья','Ледяная железа','Магическое ядро'].includes(names[i])?0:4,sprite,organic:true,food:sheet==='5'});
   }
  }
  fs.writeFileSync(path.join(dir,'catalog.json'),JSON.stringify(entries,null,2));
