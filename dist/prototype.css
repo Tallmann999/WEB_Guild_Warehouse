@@ -4,7 +4,12 @@
 #pile{isolation:isolate}
 .item:hover,#sourceItems .item:hover,#inspectItems .item:hover{z-index:200000!important}
 .item{transition:filter .12s;touch-action:none}
+.item.chosen{outline:none;border:0;background:none;box-shadow:none;animation:chosenItemGlow 1.2s ease-in-out infinite}
+.item:focus-visible{outline:none;filter:drop-shadow(0 0 7px #ffe59c)}
+@keyframes chosenItemGlow{0%,100%{filter:drop-shadow(0 0 2px #e6bc60)}50%{filter:drop-shadow(0 0 10px #ffe59c) drop-shadow(0 0 4px #ffd36a)}}
+@media(prefers-reduced-motion:reduce){.item.chosen{animation:none;filter:drop-shadow(0 0 8px #ffe59c)}}
 .item.dragging{z-index:300000!important}
+#heldRecognize{position:absolute;right:35px;bottom:92px;pointer-events:auto;z-index:1600}
 #effects{position:absolute;inset:0;pointer-events:none;z-index:75}
 #modal{z-index:90}
 #tooltip:not(.hidden){display:block;z-index:110;white-space:nowrap;max-width:300px;padding:6px 10px;color:#fff0d0;font:14px Arial;box-shadow:0 4px 10px #0006}

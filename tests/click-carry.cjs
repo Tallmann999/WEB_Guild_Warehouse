@@ -1,0 +1,24 @@
+const {chromium}=require('C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
+ const p=await browser.newPage({viewport:{width:1280,height:800}});await p.goto('file:///D:/Unity-Work/Web/Web_Guid_Warehouse/dist/index.html');
+ await p.locator('#startGame').click();await p.locator('#buyBag').click();
+ const uid=await p.evaluate(()=>state.bag[0].uid),item=p.locator(`#pile [data-uid="${uid}"]`);
+ await item.click();await p.mouse.move(600,400);
+ assert.equal(await p.locator('body > .item.dragging').count(),1);
+ assert.equal(await item.evaluate(n=>n.style.opacity),'0');
+ assert.equal(await p.evaluate(()=>drag.clickHeld),true);
+ const bounds=await p.locator('body > .item.dragging').boundingBox();assert.ok(Math.abs(bounds.x+bounds.width/2-600)<2);
+ await p.keyboard.press('Escape');assert.equal(await p.locator('body > .item.dragging').count(),0);assert.equal(await item.evaluate(n=>n.style.opacity),'');
+ const r=await item.boundingBox(),s=await p.locator('#shelves [data-cat="3"]').boundingBox();
+ await p.mouse.move(r.x+r.width/2,r.y+r.height/2);await p.mouse.down();await p.mouse.move(s.x+s.width/2,s.y+s.height/2,{steps:12});
+ assert.equal(await p.locator('body > .item.dragging').count(),1);await p.mouse.up();
+ assert.equal(await p.evaluate(uid=>state.stock.some(x=>x.uid===uid),uid),true);
+ await p.waitForTimeout(180);
+ await p.locator('#pile .mystery-item').click();await p.mouse.move(700,450);
+ assert.equal(await p.locator('body > .mystery-item.dragging').count(),1);
+ assert.match(await p.locator('body > .mystery-item.dragging img').evaluate(n=>getComputedStyle(n).filter),/brightness\(0\)/);
+ await p.locator('#heldRecognize').click();assert.equal(await p.locator('body > .item.dragging').count(),0);
+ assert.equal(await p.locator('#inspectUnknown').isVisible(),true);
+ console.log('PASS: click carries under cursor, Escape restores, held-button drag sorts, unknown silhouette and recognition');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

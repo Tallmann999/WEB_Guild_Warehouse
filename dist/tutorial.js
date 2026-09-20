@@ -29,6 +29,7 @@ function tutorialGuide(target,message,cleaning=false){
 function tutorialFrame(){
   const t=state.tutorial;if(!state.started||!t?.active){$('tutorialGuide')?.remove();return;}
   const modalOpen=!$('modal').classList.contains('hidden');
+  if(modalOpen&&$('resetLevel')){$('tutorialGuide')?.remove();return;}
   if($('autoSortButton'))$('autoSortButton').disabled=true;
   if($('sweepButton'))$('sweepButton').disabled=true;
   if(t.stage==='bag'){
@@ -57,7 +58,7 @@ function tutorialFrame(){
       tutorialGuide(held?shelf:node,held?`Положите «${item.name}» в «${categories[item.cat].name}».`:`Возьмите «${item.name}» и перенесите в «${categories[item.cat].name}». Можно также нажать предмет, затем ящик.`);return;
     }
     const unknown=state.bag.find(isUnknown);
-    if(unknown){tutorialGuide(document.querySelector(`#pile [data-uid="${unknown.uid}"]`),'Осталась неизвестная находка. Нажмите чёрный предмет со знаком вопроса.');return;}
+    if(unknown){tutorialGuide($('heldRecognize')||document.querySelector(`#pile [data-uid="${unknown.uid}"]`),$('heldRecognize')?'Нажмите «Распознать предмет в руках».':'Осталась неизвестная находка. Возьмите чёрный предмет со знаком вопроса.');return;}
     if(!state.bag.length){
       const previous=state.dayOrdersCreated||0;
       if(createOrder(true)){state.orderSchedule.shift();const order=allOrders().find(o=>o.accepted===false);t.orderId=order.id;t.stage='guest';render();save();}
@@ -81,6 +82,6 @@ function tutorialFrame(){
     const line=order.recipe[0],cat=items[line.type].cat;
     if(state.activeCat!==cat){tutorialGuide(document.querySelector(`#shelves [data-cat="${cat}"]`),`В списке нужен «${items[line.type].name}». Откройте ящик «${categories[cat].name}».`);return;}
     const x=stockFor(cat).find(x=>x.type===line.type),node=x&&document.querySelector(`#sourceItems [data-uid="${x.uid}"]`);
-    tutorialGuide(drag?.uid===x?.uid?$('parcelDrop'):node,`Перенесите «${items[line.type].name}» в посылку слева. Можно нажать на предмет.`);
+    tutorialGuide(drag?.uid===x?.uid?$('parcelDrop'):node,`Возьмите «${items[line.type].name}» и нажмите на посылку слева, чтобы положить его.`);
   }
 }

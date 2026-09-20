@@ -200,7 +200,13 @@ function planDay(firstArrival=0){
   for(let i=0;i<n;i++){const big=state.day===2&&i===2;state.schedule.push({at:timing?timing.adventurers[i]:i===0?firstArrival:Math.round(i*140/(n-1)),visitor:(state.day+i-1)%adventurers.length,big,loot:makeLoot(big)});}
   guaranteeOrder();tickArrivals();
 }
-function startGame(){state=freshState();state.started=true;last=performance.now();planDay(2);startTutorial();render();save();}
+function startGame(){state=freshState();state.started=true;last=performance.now();planDay();startTutorial();if(!state.offers.length&&state.schedule.length){state.schedule[0].at=0;tickArrivals();}render();save();}
+function openSettings(){
+  if(!state.started||state.autoSorting)return;
+  modal('<h2>Настройки</h2><p>Сброс вернёт игру к первому дню: монеты, предметы и поручения начнутся заново. Обучение пройдёт повторно.</p><div class="modal-actions"><button id="resetLevel" class="primary">Сбросить уровень и пройти обучение</button><button id="resumeSettings">Продолжить игру</button></div>');
+  $('resumeSettings').onclick=closeModal;
+  $('resetLevel').onclick=()=>{try{localStorage.removeItem(TUTORIAL_KEY);}catch{}forceCloseModal();clearTimeout(toastTimer);$('toast').classList.remove('show');$('effects').replaceChildren();document.querySelectorAll('.reward-coin').forEach(coin=>coin.remove());startGame();};
+}
 function tickArrivals(){
   let changed=false;
   const now=CONFIG.daySeconds-state.seconds;let orderDeferred=false;
@@ -333,7 +339,7 @@ function renderItems(area,list,kind){
     const pos=table?(x.tablePos||{x:Math.random()*.8,y:Math.random()*.7}):x[key];
     if(!table){pos.x=Math.max(0,Math.min(1,pos.x));pos.y=Math.max(8,pos.y);}
     if(table)x.tablePos=pos;
-    const b=button(area,'',()=>clickItem(x,kind));b.className='item'+(state.selected===x.uid?' chosen':'');b.dataset.uid=x.uid;b.dataset.kind=kind;
+    const b=button(area,'',e=>clickItem(x,kind,e));b.className='item'+(state.selected===x.uid?' chosen':'');b.dataset.uid=x.uid;b.dataset.kind=kind;
     const unknown=isUnknown(x);b.classList.toggle('mystery-item',unknown);
     b.setAttribute('aria-label',unknown?'Неизвестная находка':items[x.type].name);
     b.innerHTML=`<img src="${asset(items[x.type].sprite)}" alt="${unknown?'Неизвестная находка':items[x.type].name}" draggable="false">${unknown?'<span class="mystery-question">?</span>':''}`;
@@ -343,14 +349,14 @@ function renderItems(area,list,kind){
   });
   if(!table)area.style.height=Math.max(area.parentElement.clientHeight,...list.map(x=>x[key].y+size+12))+'px';
 }
-function clickItem(x,kind){
+function clickItem(x,kind,e){
   if(performance.now()<suppressUntil||state.paused||state.autoSorting)return;
-  if(isUnknown(x)){openUnknown(x);return;}
   if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
-  if(kind==='source'){packItem(x.uid);return;}
-  if(['inspect','target','packed'].includes(kind))return;
-  state.selected=state.selected===x.uid?null:x.uid;
-  if(kind==='junk'){renderInspection();toast('Выберите коробку на полке или нажмите «Переложить»');}else renderWork();
+  const node=e?.currentTarget||document.querySelector(`.item[data-uid="${x.uid}"][data-kind="${kind}"]`);if(!node)return;
+  const r=node.getBoundingClientRect();cancelDrag();state.selected=x.uid;
+  drag={uid:x.uid,item:x,node,kind,x:r.left+r.width/2,y:r.top+r.height/2,grabX:r.width/scale/2,grabY:r.height/scale/2,active:false,clickHeld:true};
+  liftItem();moveHeld(e?.clientX||drag.x,e?.clientY||drag.y);
+  if(isUnknown(x)){const inspect=button($('effects'),'Распознать предмет в руках',()=>openUnknown(x),'heldRecognize');inspect.className='primary';}
 }
 function trackSortingBag(loot){
   state.sortingBatches??=[];
@@ -450,17 +456,19 @@ function pointerDown(e,x,node,kind){
   if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
   const r=node.getBoundingClientRect();drag={uid:x.uid,item:x,node,kind,x:e.clientX,y:e.clientY,grabX:(e.clientX-r.left)/scale,grabY:(e.clientY-r.top)/scale,active:false};node.setPointerCapture(e.pointerId);
 }
-function cancelDrag(){if(drag){drag.ghost?.remove();drag.node.style.opacity='';drag=null;}}
+function cancelDrag(){if(drag){drag.ghost?.remove();drag.node.style.opacity='';drag=null;state.selected=null;}$('heldRecognize')?.remove();}
+function liftItem(){drag.active=true;drag.ghost=drag.node.cloneNode(true);drag.ghost.removeAttribute('id');drag.ghost.classList.add('dragging');drag.ghost.classList.remove('chosen');drag.ghost.style.opacity='1';drag.ghost.style.transform='none';drag.ghost.style.width=drag.node.getBoundingClientRect().width+'px';drag.ghost.style.height=drag.node.getBoundingClientRect().height+'px';document.body.append(drag.ghost);drag.node.style.opacity='0';hidden('tooltip',true);}
+function moveHeld(x,y){drag.ghost.style.left=x-drag.grabX*scale+'px';drag.ghost.style.top=y-drag.grabY*scale+'px';}
 function inside(el,x,y){if(!el)return false;const r=el.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
 addEventListener('pointermove',e=>{
   if(!drag)return;if(!drag.active&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;
-  if(!drag.active){drag.active=true;drag.ghost=drag.node.cloneNode(true);drag.ghost.classList.add('dragging');drag.ghost.classList.remove('chosen');drag.ghost.style.opacity='1';drag.ghost.style.transform='none';drag.ghost.style.width=drag.node.getBoundingClientRect().width+'px';drag.ghost.style.height=drag.node.getBoundingClientRect().height+'px';document.body.append(drag.ghost);drag.node.style.opacity='0';}
-  drag.ghost.style.left=e.clientX-drag.grabX*scale+'px';drag.ghost.style.top=e.clientY-drag.grabY*scale+'px';
+  if(!drag.active)liftItem();
+  moveHeld(e.clientX,e.clientY);
   const scroll=drag.kind==='table'?$('pile'):drag.node.parentElement.parentElement;
   if(scroll&&inside(scroll,e.clientX,e.clientY)){const r=scroll.getBoundingClientRect();if(e.clientY>r.bottom-20*scale)scroll.scrollTop+=10;if(e.clientY<r.top+20*scale)scroll.scrollTop-=10;}
 });
-addEventListener('pointerup',e=>{
-  if(!drag)return;const d=drag;drag=null;if(!d.active)return;d.ghost.remove();d.node.style.opacity='';suppressUntil=performance.now()+150;if(state.paused)return;
+function dropHeld(e){
+  if(!drag)return;const d=drag;drag=null;if(!d.active)return;d.ghost.remove();d.node.style.opacity='';$('heldRecognize')?.remove();state.selected=null;suppressUntil=performance.now()+150;if(state.paused)return;
   if(d.kind==='table'||d.kind==='junk'){
     if(d.kind==='table'&&state.upgrade&&inside($('junkShelf'),e.clientX,e.clientY)){state.bag=state.bag.filter(x=>x.uid!==d.uid);state.junk.push(d.item);state.selected=null;renderWork();save();return;}
     for(const box of $('shelves').querySelectorAll('[data-cat]'))if(inside(box,e.clientX,e.clientY)){sortItem(d.uid,Number(box.dataset.cat));return;}
@@ -478,8 +486,16 @@ addEventListener('pointerup',e=>{
     if(state.inspectCat!==null){renderInspection();renderTarget();}else renderWork();
     if($(paneId))$(paneId).scrollTop=scrollTop;save();
   }else toast('Вещь осталась на прежнем месте.');
-});
+}
+addEventListener('pointerup',e=>{if(!drag?.clickHeld)dropHeld(e);});
+addEventListener('pointerdown',e=>{
+  if(!drag?.clickHeld||e.button!==0)return;
+  if(e.target.closest('#heldRecognize'))return;
+  if(e.target.closest('#pile,#shelves,#inspectItems,#sourceItems,#targetItems,#parcelDrop,#targetPreview')){e.preventDefault();e.stopImmediatePropagation();dropHeld(e);}
+  else cancelDrag();
+},true);
 addEventListener('pointercancel',cancelDrag);
+addEventListener('click',e=>{if(performance.now()<suppressUntil){e.preventDefault();e.stopImmediatePropagation();}},true);
 
 const UPGRADE_DEFS=[
  {key:'upgrade',name:'Сундук диковинок',art:'chest',price:20,description:'Одной кнопкой убрать весь хлам со стола в сундук. Разобрать можно позже.'},
@@ -612,6 +628,7 @@ function setup(){
   const collection=document.querySelector('[data-lock="Магический сканер"]');collection.textContent='Коллекция';collection.onclick=openCollection;
   const r=document.querySelector('.rep');r.tabIndex=0;r.setAttribute('role','button');r.setAttribute('aria-label','Посмотреть ранги репутации');r.onclick=openRanks;r.onkeydown=e=>{if(e.key==='Enter')openRanks();};
   $('sound').onclick=()=>{state.muted=!state.muted;beep();updateHud();save();};
+  $('settings').onclick=openSettings;
   $('pause').onclick=()=>{if(state.paused||!state.started)return;modal('<h2>Лавка на паузе</h2><p>Часы остановлены. Все находки на своих местах.</p><button id="resume" class="primary">Продолжить</button>');$('resume').onclick=closeModal;};
 }
 addEventListener('keydown',e=>{
@@ -621,7 +638,7 @@ addEventListener('keydown',e=>{
     return;
   }
   if(state.autoSorting)return;
-  if(e.key==='Escape'){if(state.inspectCat!==null)closeInspection();else if(state.selected!==null){state.selected=null;renderWork();}else if(state.activeCat!==null){state.activeCat=null;renderWork();}else if(state.screen==='work')setScreen('reception');}
+  if(e.key==='Escape'){if(drag){cancelDrag();return;}if(state.inspectCat!==null)closeInspection();else if(state.selected!==null){state.selected=null;renderWork();}else if(state.activeCat!==null){state.activeCat=null;renderWork();}else if(state.screen==='work')setScreen('reception');}
 });
 document.addEventListener('visibilitychange',()=>{last=performance.now();save();});addEventListener('pagehide',save);addEventListener('resize',resize);
 function tick(now){const dt=Math.min(1,(now-last)/1000);last=now;if(state.started&&!state.paused&&!state.ended&&!state.autoSorting&&!document.hidden){if(!state.tutorial?.active){state.seconds=Math.max(0,state.seconds-dt*(state.screen==='work'?CONFIG.workTimeRate:1));tickArrivals();advanceReadyVisitor(dt);}updateHud();saveClock+=dt;if(saveClock>=5){saveClock=0;save();}}tutorialFrame();requestAnimationFrame(tick);}
