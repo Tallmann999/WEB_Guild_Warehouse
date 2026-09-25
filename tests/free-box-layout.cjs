@@ -8,7 +8,7 @@ const assert=require('node:assert/strict'),path=require('node:path');
  const uid=await p.locator('#inspectItems .item').first().getAttribute('data-uid');await move(`#inspectItems [data-uid="${uid}"]`,'#inspectScroll',310,115);
  const position=await p.evaluate(uid=>({...state.stock.find(x=>x.uid===Number(uid)).boxPos}),uid);
  await p.locator('#closeInspector').click();await p.locator('#shelves [data-cat="4"]').click();assert.deepEqual(await p.evaluate(uid=>state.stock.find(x=>x.uid===Number(uid)).boxPos,uid),position);
- const inspector=await p.locator('#inspector').boundingBox(),note=await p.locator('#checklist').boundingBox();assert.ok(inspector.x+inspector.width<=note.x);await p.screenshot({path:'audit_source/free-inspection.png'});
+ const inspector=await p.locator('#inspector').boundingBox(),note=await p.locator('#orderBoard').boundingBox();assert.ok(inspector.x+inspector.width<=note.x);await p.screenshot({path:'audit_source/free-inspection.png'});
  const allUids=await p.evaluate(()=>state.stock.map(x=>x.uid).sort((a,b)=>a-b));await p.locator('#tidyInspector').click();assert.deepEqual(await p.evaluate(()=>state.stock.map(x=>x.uid).sort((a,b)=>a-b)),allUids);assert.equal(await p.evaluate(()=>new Set(state.stock.map(x=>JSON.stringify(x.boxPos))).size),15);
  await p.evaluate(()=>{closeInspection();setScreen('work','order');selectBox(4);});
  const source=await p.locator('#sourceBox').boundingBox();assert.equal(source.width,inspector.width);assert.equal(source.height,inspector.height);assert.ok(Math.abs(source.y-inspector.y)<2);

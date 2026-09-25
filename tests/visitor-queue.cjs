@@ -17,7 +17,12 @@ const assert=require('node:assert/strict'),path=require('node:path');
       }else{
        const gold=state.gold;buyBag();if(state.gold!==gold)throw Error('Bought out-of-turn bag');
        const o=head.value;if(day===1){const demand=new Map();for(const order of allOrders())for(const r of order.recipe)demand.set(r.type,(demand.get(r.type)||0)+r.count);for(const [type,n] of demand)if(countType(type)<n)throw Error('Day 1 recipe unavailable or over-reserved');}
-       openOrder(o);document.getElementById('acceptOrder').click();accepted++;
+       if(allOrders().filter(x=>x.accepted!==false).length===4){
+        const ready=allOrders().find(x=>x.accepted!==false&&x.recipe.every(r=>state.stock.filter(y=>y.type===r.type&&!isUnknown(y)).length>=r.count));
+        if(!ready)throw Error('No available order to free a leaflet');
+        state.order=ready;setScreen('work','order');for(const r of ready.recipe)while(remaining(r)>0)packItem(state.stock.find(x=>x.type===r.type&&!isUnknown(x)).uid);finishOrder();
+       }
+       openOrder(o);document.getElementById('acceptOrder').click();if(!o.accepted)throw Error('Order was not accepted');accepted++;
       }
       tickArrivals();
      }
@@ -27,13 +32,13 @@ const assert=require('node:assert/strict'),path=require('node:path');
    }
   }
   setScreen('reception');return allOrders().length;
- });assert.equal(result,6);
- await p.locator('#ordersNav').click();assert.equal(await p.locator('[data-accepted-order]').count(),6);
+ });assert.equal(result,4);
+ await p.locator('#ordersNav').click();assert.equal(await p.locator('[data-accepted-order]').count(),4);
  await p.screenshot({path:'audit_source/accepted-orders-list.png'});
- await p.locator('[data-accepted-order]').nth(2).click();assert.equal(await p.locator('#beginAssembly').count(),1);
+ await p.locator('[data-accepted-order]').first().click();assert.equal(await p.locator('#beginAssembly').count(),1);
  await p.locator('#beginAssembly').click();assert.equal(await p.evaluate(()=>state.order.customer),4);
  await p.evaluate(()=>save());const queueBefore=await p.evaluate(()=>visitorQueue().map(x=>[x.kind,x.value.arrivalSerial]));
- await p.reload();await p.locator('#loadGame').click();assert.deepEqual(await p.evaluate(()=>visitorQueue().map(x=>[x.kind,x.value.arrivalSerial])),queueBefore);assert.equal(await p.evaluate(()=>allOrders().length),6);
+ await p.reload();await p.locator('#loadGame').click();assert.deepEqual(await p.evaluate(()=>visitorQueue().map(x=>[x.kind,x.value.arrivalSerial])),queueBefore);assert.equal(await p.evaluate(()=>allOrders().length),4);
  // One clock jump must interleave actual arrivals by event time.
  const order=await p.evaluate(()=>{state=freshState();state.started=true;planDay();state.stock=state.schedule[0].loot.map(x=>({...x}));state.seconds=155;tickArrivals();return visitorQueue().map(x=>x.kind);});assert.deepEqual(order,['bag','order','bag']);
  assert.deepEqual(errors,[]);console.log('PASS: 30 two-day runs, 7+3 daily quotas, first-day reserved stock, FIFO counter actions, accepted list, chef, save/resume');

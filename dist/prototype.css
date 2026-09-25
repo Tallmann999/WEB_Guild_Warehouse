@@ -9,7 +9,7 @@
 @keyframes chosenItemGlow{0%,100%{filter:drop-shadow(0 0 2px #e6bc60)}50%{filter:drop-shadow(0 0 10px #ffe59c) drop-shadow(0 0 4px #ffd36a)}}
 @media(prefers-reduced-motion:reduce){.item.chosen{animation:none;filter:drop-shadow(0 0 8px #ffe59c)}}
 .item.dragging{z-index:300000!important}
-#heldRecognize{position:absolute;right:35px;bottom:92px;pointer-events:auto;z-index:1600}
+#heldRecognize{position:fixed;pointer-events:auto;z-index:400010;max-width:260px;padding:8px 12px;font:600 16px 'Roboto Condensed',sans-serif}
 #effects{position:absolute;inset:0;pointer-events:none;z-index:75}
 #modal{z-index:90}
 #tooltip:not(.hidden){display:block;z-index:110;white-space:nowrap;max-width:300px;padding:6px 10px;color:#fff0d0;font:14px Arial;box-shadow:0 4px 10px #0006}
@@ -55,6 +55,8 @@
 #startScreen{position:absolute;inset:0;background:url('assets/start-lootkeeper.png') center/cover no-repeat}
 .start-actions{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);display:grid;gap:12px;width:280px}
 .start-actions button{font-size:24px}
+#restartStartTutorial{font-size:17px}
+#restartTutorial{position:absolute;left:28px;bottom:22px;z-index:25;font-size:15px;padding:10px 14px}
 #game.starting>header,#game.starting>footer{display:none}
 #reception #visitor{left:380px}
 #speech{left:36px;right:auto;top:145px;width:300px;min-height:0;padding:24px;background:#e0cba5;color:#392c21;border:0;border-radius:0;filter:none;text-align:left}
@@ -63,7 +65,7 @@
 footer nav{gap:6px}footer nav button{padding:10px;font-size:14px}
 .rep{cursor:pointer;min-width:100px}.rep b{font-size:16px}
 .work-heading{gap:12px}.work-heading h1{font-size:20px}
-#workProgress{max-width:165px}.ad-sort-button{min-width:160px;font-size:14px}
+#workProgress{max-width:165px}.auto-sort-button{min-width:160px;font-size:14px}
 #shelves{gap:12px}.shelf-box{width:158px}.shelf-box .category-icon{left:62px}
 .shelf-box img.boxart{height:96px}
 .shelf-box .tag{bottom:0;min-height:38px;left:0;right:0;display:flex;align-items:center;justify-content:center;padding:4px 3px;border:0;background:none;box-shadow:none;color:#f4e5c6;font-size:14px;text-align:center;text-shadow:0 2px 3px #17100c}
@@ -204,6 +206,9 @@ html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',san
 .upgrade-card h3{margin:8px 0;font-size:20px;color:#efcf83}
 .upgrade-card p{font-size:15px;line-height:1.3;margin:0 0 12px;flex:1}
 .upgrade-card button{width:100%;font-size:16px;padding:9px}
+#upgradesNav.upgrade-prompt{border-color:#ffe08a;color:#fff4c5;background:#785a20;animation:upgrade-pulse 1.4s ease-in-out infinite}
+@keyframes upgrade-pulse{0%,100%{box-shadow:0 0 5px #ffcf5b66}50%{box-shadow:0 0 18px #ffcf5be6,inset 0 0 12px #ffdf7955}}
+@media(prefers-reduced-motion:reduce){#upgradesNav.upgrade-prompt{animation:none;box-shadow:0 0 12px #ffcf5baa}}
 #bag.premium{width:183px;height:213px;filter:drop-shadow(0 0 10px #aa72d366)}
 .accepted-order-list{display:grid;gap:12px}
 .accepted-order-list button{display:grid;gap:8px;text-align:left;padding:16px}
@@ -236,6 +241,7 @@ html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',san
 #inspectScroll,#sourceScroll{left:10%;right:10%;top:72px;bottom:28px;overflow:auto}
 #targetPreview .target-items{margin-left:10%;margin-right:10%}
 .mystery-item{position:relative}
+.item.mystery-item{position:absolute}
 .mystery-item>img{filter:brightness(0)!important;opacity:1!important}
 .mystery-question{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:32px;font-weight:800;font-style:normal;color:white;text-shadow:0 2px 4px black;pointer-events:none}
 .collection-item .mystery-question{top:44px}
@@ -248,8 +254,7 @@ html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',san
 .recognition-result{color:#ffdf76!important;font-size:21px;line-height:1.4;text-shadow:0 0 12px #ffd45c44}
 .recognition-result strong{display:block;font-size:23px}
 .recognition-result span{display:inline-block;margin:4px 10px;font-weight:700}
-#pile.crowded-pile{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));grid-auto-rows:84px;align-content:start;overflow-y:auto;padding:8px;gap:4px}
-#pile.crowded-pile>.item{position:relative;left:auto!important;top:auto!important}
+#pile{overflow:hidden}
 /* Shared workbench layout: parcel, open box, and order sheet stay separate. */
 #inspector:not(.junk-open){left:326px;top:337px;width:551px;height:282px}
 .fulfillment #sourceBox{left:230px;right:305px;top:0;bottom:0;height:auto}
@@ -295,3 +300,23 @@ html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',san
 @keyframes tutorialPoint{50%{transform:translateY(10px)}}
 @keyframes tutorialClean{0%{transform:translate(40px,0)}25%{transform:translate(0,35px)}50%{transform:translate(-40px,0)}75%{transform:translate(0,-35px)}100%{transform:translate(40px,0)}}
 @media(prefers-reduced-motion:reduce){.tutorial-ring,.tutorial-hand,.cleaning .tutorial-hand{animation:none}}
+
+/* Guest alert stays above the workbench, open boxes and dialogs. */
+#arrivalSignal{bottom:82px;left:28px;z-index:400000;pointer-events:auto}
+#arrivalSignal.waiting:not(.compact){animation:arrivalBackgroundPulse 1.2s ease-in-out infinite}
+#arrivalSignal.compact{left:8px;width:56px;min-height:56px;height:56px;padding:3px;gap:0;border-radius:8px;animation:none}
+#arrivalSignal.compact .arrival-copy{display:none}
+#arrivalSignal.compact .arrival-mark{animation:none}
+@keyframes arrivalBackgroundPulse{0%,100%{background-color:#49331c;box-shadow:0 0 8px #eebd4150}50%{background:#92702bf5;box-shadow:0 0 24px #ffda6aa0}}
+#ship.dispatch-ready{background:linear-gradient(#e9c862,#bc932d);color:#30200c;border:2px solid #ffe9a1;box-shadow:0 0 18px #ffdc6580;animation:dispatchGlow 1.5s ease-in-out infinite}
+@keyframes dispatchGlow{50%{box-shadow:0 0 28px #ffdc65cc;filter:brightness(1.15)}}
+#orderBoard{top:108px;right:24px;width:clamp(170px,18vw,232px);max-height:none;overflow:visible;padding:0;border:0;background:none;gap:7px;z-index:20}
+#orderBoard.work-orders{top:424px;right:98px}
+#orderBoard .order-card{position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 5px;min-height:62px;padding:7px 10px;border-radius:2px;background:linear-gradient(110deg,#ebd9ae,#d4bc88);box-shadow:1px 3px 5px #120b0766;font-size:15px;transform:rotate(-1deg)}
+#orderBoard .order-card:nth-child(even){transform:rotate(1deg)}
+#orderBoard .order-card strong{font-size:16px}
+#orderBoard .order-card>span{grid-row:2;margin:0;gap:2px}
+#orderBoard .order-card img{width:24px;height:24px}
+#orderBoard .order-card small{grid-column:2;grid-row:1;font-size:11px}
+.order-card-action{grid-column:2;grid-row:2;font-size:13px;color:#4d5428}
+@media(prefers-reduced-motion:reduce){#arrivalSignal.waiting:not(.compact),#ship.dispatch-ready{animation:none}}

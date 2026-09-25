@@ -365,7 +365,7 @@
   },
   {
     "name": "Синяя чешуя",
-    "cat": 4,
+    "cat": 0,
     "sprite": "ingredients/item7-16",
     "organic": true,
     "food": false
