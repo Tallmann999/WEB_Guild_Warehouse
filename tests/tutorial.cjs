@@ -10,7 +10,7 @@ const assert=require('node:assert/strict'),path=require('node:path');
  for(const x of known){await p.locator(`#pile [data-uid="${x.uid}"]`).click();await p.waitForTimeout(100);assert.match(await p.locator('.tutorial-note span').textContent(),/Положите/);await p.locator(`#shelves [data-cat="${x.cat}"]`).click();}
  assert.equal(await p.evaluate(()=>state.seconds),180);await p.screenshot({path:'audit_source/tutorial-unknown.png'});
  await p.reload();await p.locator('#loadGame').click();assert.equal(await p.evaluate(()=>state.tutorial.active),true);assert.equal(await p.evaluate(()=>state.bag.length),1);
- await p.locator('#pile .mystery-item').click();await p.locator('#heldRecognize').click();await p.locator('#inspectUnknown').click();await p.waitForFunction(()=>document.querySelector('#tutorialGuide.cleaning'));await p.screenshot({path:'audit_source/tutorial-cleaning.png'});
+ await p.locator('#pile .mystery-item').click();await p.waitForFunction(()=>document.querySelector('#tutorialGuide.cleaning'));await p.screenshot({path:'audit_source/tutorial-cleaning.png'});
  await p.evaluate(()=>{for(let i=0;i<80&&!document.getElementById('cleanKey').disabled;i++)document.getElementById('cleanKey').click();});
  await p.waitForFunction(()=>document.querySelector('.tutorial-note span').textContent.includes('Закройте'));await p.locator('#closeModal').click();
  const last=await p.evaluate(()=>({uid:state.bag[0].uid,cat:items[state.bag[0].type].cat}));await p.locator(`#pile [data-uid="${last.uid}"]`).click();await p.locator(`#shelves [data-cat="${last.cat}"]`).click();

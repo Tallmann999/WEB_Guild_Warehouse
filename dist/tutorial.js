@@ -1,5 +1,7 @@
 'use strict';
 const TUTORIAL_KEY='guild-warehouse-tutorial-completed-v1';
+let tutorialTarget=null;
+function clearTutorialHighlight(){tutorialTarget?.classList.remove('tutorial-focus');tutorialTarget=null;}
 function startTutorial(){
   try{if(localStorage.getItem(TUTORIAL_KEY)==='1')return;}catch{}
   const offer=state.schedule.shift();if(!offer)return;
@@ -11,25 +13,25 @@ function startTutorial(){
 function finishTutorial(skipped=false){
   if(state.tutorial)state.tutorial.active=false;
   try{localStorage.setItem(TUTORIAL_KEY,'1');}catch{}
-  $('tutorialGuide')?.remove();render();save();
+  clearTutorialHighlight();$('tutorialGuide')?.remove();render();save();
   if(!skipped)toast('Обучение завершено! Продолжайте собирать поручение.');
 }
 function tutorialGuide(target,message,cleaning=false){
   let guide=$('tutorialGuide');
-  if(!guide){guide=document.createElement('div');guide.id='tutorialGuide';guide.innerHTML='<div class="tutorial-ring"></div><div class="tutorial-hand" aria-hidden="true">👇</div><div class="tutorial-note"><span role="status" aria-live="polite"></span><button>Пропустить обучение</button></div>';$('effects').append(guide);guide.querySelector('button').onclick=()=>finishTutorial(true);}
+  if(!guide){guide=document.createElement('div');guide.id='tutorialGuide';guide.innerHTML='<div class="tutorial-hand" aria-hidden="true">👇</div><div class="tutorial-note"><span role="status" aria-live="polite"></span><button>Пропустить обучение</button></div>';$('effects').append(guide);guide.querySelector('button').onclick=()=>finishTutorial(true);}
   const text=guide.querySelector('.tutorial-note span');if(text.textContent!==message)text.textContent=message;
   guide.classList.toggle('cleaning',cleaning);
-  const ring=guide.querySelector('.tutorial-ring'),hand=guide.querySelector('.tutorial-hand');
-  if(!target||!target.getClientRects().length){ring.style.display=hand.style.display='none';return;}
-  ring.style.display=hand.style.display='';
+  const hand=guide.querySelector('.tutorial-hand'),highlight=target?.tagName==='CANVAS'?target.parentElement:target;
+  if(tutorialTarget!==highlight){clearTutorialHighlight();tutorialTarget=highlight;tutorialTarget?.classList.add('tutorial-focus');}
+  if(!target||!target.getClientRects().length){clearTutorialHighlight();hand.style.display='none';return;}
+  hand.style.display='';
   const r=target.getBoundingClientRect(),g=$('game').getBoundingClientRect(),x=(r.left-g.left)/scale,y=(r.top-g.top)/scale,w=r.width/scale,h=r.height/scale;
-  Object.assign(ring.style,{left:(x-4)+'px',top:(y-4)+'px',width:(w+8)+'px',height:(h+8)+'px'});
   Object.assign(hand.style,{left:(x+w/2-22)+'px',top:Math.max(4,cleaning?y+h/2-20:y-48)+'px'});
 }
 function tutorialFrame(){
-  const t=state.tutorial;if(!state.started||!t?.active){$('tutorialGuide')?.remove();return;}
+  const t=state.tutorial;if(!state.started||!t?.active){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}
   const modalOpen=!$('modal').classList.contains('hidden');
-  if(modalOpen&&$('resetLevel')){$('tutorialGuide')?.remove();return;}
+  if(modalOpen&&$('resetLevel')){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}
   if($('autoSortButton'))$('autoSortButton').disabled=true;
   if($('sweepButton'))$('sweepButton').disabled=true;
   if(t.stage==='bag'){
@@ -46,8 +48,7 @@ function tutorialFrame(){
       if($('dirt')){
         if($('cleanKey').disabled)tutorialGuide($('closeModal'),'Предмет распознан! Закройте окно крестиком.');
         else tutorialGuide($('dirt'),'Зажмите левую кнопку мыши и водите по кругу, чтобы очистить предмет.',true);
-      }else if($('inspectUnknown'))tutorialGuide($('inspectUnknown'),'Нажмите «Распознать», чтобы очистить неизвестную находку.');
-      else tutorialGuide($('closeModal'),'Закройте окно и продолжите обучение.');return;
+      }else tutorialGuide($('closeModal'),'Закройте окно и продолжите обучение.');return;
     }
     if(state.screen!=='work'||state.mode!=='sort'){tutorialGuide($('resumeBag')||$('goWork'),'Вернитесь к столу и разложите находки.');return;}
     if(state.inspectCat!==null){tutorialGuide($('closeInspector'),'Закройте ящик, чтобы продолжить сортировку.');return;}
@@ -58,7 +59,7 @@ function tutorialFrame(){
       tutorialGuide(held?shelf:node,held?`Положите «${item.name}» в «${categories[item.cat].name}».`:`Возьмите «${item.name}» и перенесите в «${categories[item.cat].name}». Можно также нажать предмет, затем ящик.`);return;
     }
     const unknown=state.bag.find(isUnknown);
-    if(unknown){tutorialGuide($('heldRecognize')||document.querySelector(`#pile [data-uid="${unknown.uid}"]`),$('heldRecognize')?'Нажмите «Распознать предмет в руках».':'Осталась неизвестная находка. Возьмите чёрный предмет со знаком вопроса.');return;}
+    if(unknown){tutorialGuide(document.querySelector(`#pile [data-uid="${unknown.uid}"]`),'Нажмите на неизвестную находку, чтобы сразу открыть изучение.');return;}
     if(!state.bag.length){
       const previous=state.dayOrdersCreated||0;
       if(createOrder(true)){state.orderSchedule.shift();const order=allOrders().find(o=>o.accepted===false);t.orderId=order.id;t.stage='guest';render();save();}

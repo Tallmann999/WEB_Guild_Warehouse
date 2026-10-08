@@ -141,11 +141,27 @@ function modal(html,{locked=false,wide=false,brief=false}={}){
 }
 function closeModal(){if(modalLocked)return;modalCleanup?.();modalCleanup=null;hidden('modal',true);lockBackground(false);state.paused=false;last=performance.now();previousFocus?.isConnected&&previousFocus.focus();updateHud();save();}
 function forceCloseModal(){modalLocked=false;closeModal();}
+function updateDaylight(){
+  const progress=Math.max(0,Math.min(1,1-state.seconds/CONFIG.daySeconds));
+  const periods=['morning','day','evening','night'],labels=['Утро','День','Вечер','Ночь'],stops=[0,.4,.76,1];
+  const phase=progress<.25?0:progress<.65?1:progress<.88?2:3;
+  const sky=$('daylight');
+  if(sky){
+    let segment=0;while(segment<2&&progress>stops[segment+1])segment++;
+    const blend=(progress-stops[segment])/(stops[segment+1]-stops[segment]);
+    periods.forEach((period,i)=>{const weight=i===segment?1-blend:i===segment+1?blend:0;sky.children[i].style.opacity=weight;$('game').style.setProperty('--light-'+period,weight);});
+  }
+  $('clock').textContent=labels[phase];
+  // Future ambient sound can subscribe to a single event per period change.
+  if($('game').dataset.period!==periods[phase]){
+    $('game').dataset.period=periods[phase];
+    $('game').dispatchEvent(new CustomEvent('dayperiodchange',{detail:{period:periods[phase]}}));
+  }
+}
 function updateHud(){
   $('upgradesNav')?.classList.toggle('upgrade-prompt',state.started&&!state.upgradeHintSeen&&(state.day>1||(state.day===1&&state.ended)));
-  const minutes=Math.floor((1-state.seconds/CONFIG.daySeconds)*720)+480;
   $('dayLabel').textContent=`День ${state.day} / 5`;
-  $('clock').textContent=`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')} · ${state.paused?'пауза':state.seconds===0?'вечер':minutes<720?'утро':minutes<1020?'день':'вечер'}`;
+  updateDaylight();
   $('sunbar').style.width=state.seconds/CONFIG.daySeconds*100+'%';$('gold').textContent=state.gold;
   $('rep').textContent=`${rank()+1}/7 · ${state.rep} реп.`;$('orderBadge').textContent=allOrders().filter(o=>o.accepted!==false).length;
   $('sound').textContent=state.muted?'♫̸':'♫';$('sound').setAttribute('aria-label',state.muted?'Включить звук':'Выключить звук');
@@ -380,11 +396,11 @@ function renderItems(area,list,kind){
 function clickItem(x,kind,e){
   if(state.paused||state.autoSorting)return;
   if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
+  if(isUnknown(x)){cancelDrag();openUnknown(x);return;}
   const node=e?.currentTarget||document.querySelector(`.item[data-uid="${x.uid}"][data-kind="${kind}"]`);if(!node)return;
   const r=node.getBoundingClientRect();cancelDrag();state.selected=x.uid;
   drag={uid:x.uid,item:x,node,kind,x:r.left+r.width/2,y:r.top+r.height/2,grabX:r.width/scale/2,grabY:r.height/scale/2,active:false,clickHeld:true};
   liftItem();moveHeld(e?.clientX||drag.x,e?.clientY||drag.y);
-  if(isUnknown(x))showHeldRecognition(x,drag.ghost);
 }
 function trackSortingBag(loot){
   state.sortingBatches??=[];
@@ -565,9 +581,7 @@ function sweep(){if(!state.upgrade||state.paused||!state.bag.length)return;state
 function rarity(type){return type===17||type===23?'Легендарная':type===15||type===28?'Эпическая':type%5===0?'Редкая':'Простая';}
 function openUnknown(x){
   if(state.paused||state.autoSorting||!isUnknown(x))return;
-  modal(`<h2>Неизвестная находка</h2><div class="unknown-preview mystery-item"><img src="${asset(items[x.type].sprite)}" alt="Неизвестная находка"><span class="mystery-question">?</span></div><p>Очистите предмет, чтобы распознать его.</p><button id="inspectUnknown" class="primary">Распознать</button><button id="stashUnknown" ${!state.upgrade||state.junk.includes(x)?'disabled':''}>${state.junk.includes(x)?'Уже в Диковинках':state.upgrade?'Отложить в Диковинки':'Диковинки — сначала откройте сундук'}</button>`);
-  $('inspectUnknown').onclick=()=>openCleaning(x.type,x);
-  $('stashUnknown').onclick=()=>{if(!state.upgrade||state.junk.includes(x))return;state.bag=state.bag.filter(y=>y!==x);state.stock=state.stock.filter(y=>y!==x);state.junk.push(x);closeModal();render();if(state.inspectCat!==null)renderInspection();save();};
+  openCleaning(x.type,x);
 }
 function recognizeItem(type,instance){
   const newlyKnown=!state.collection.includes(type),wasUnknown=instance&&isUnknown(instance);
@@ -586,14 +600,15 @@ function openCollection(){
 }
 function openCleaning(type,instance=owned().find(x=>x.type===type&&isUnknown(x))){
   const it=items[type],done=state.collection.includes(type);
-  modal(`<h2 id="recognitionTitle">${done?it.name:'Осмотр находки'}</h2><p>${done?'Вы распознали эту находку и записали её название в атлас.':'Проведите пальцем или мышью, чтобы стереть налёт.'}</p><div class="clean-stage"><img src="${asset(it.sprite)}" alt="${done?it.name:'Неизученная находка'}"><canvas id="dirt" width="360" height="270" aria-label="Стирайте налёт с находки"></canvas></div><div class="clean-meter"><i id="cleanBar" style="width:${done?100:0}%"></i></div><p id="cleanStatus">${done?'✓ Распознано: '+it.name:'Очищено 0%'}</p><div class="modal-actions"><button id="cleanKey">Очистить участок · клавиатура</button><button id="backCollection">К коллекции</button></div>`);
+  modal(`<h2 id="recognitionTitle">${done?it.name:'Изучение находки'}</h2><p>${done?'Вы распознали эту находку и записали её название в атлас.':'Зажмите левую кнопку мыши и водите по предмету, чтобы стереть налёт. Или нажимайте «Распознать».'}</p><div class="clean-stage"><img src="${asset(it.sprite)}" alt="${done?it.name:'Неизученная находка'}"><canvas id="dirt" width="360" height="270" aria-label="Стирайте налёт с находки"></canvas></div><div class="clean-meter"><i id="cleanBar" style="width:${done?100:0}%"></i></div><p id="cleanStatus">${done?'✓ Распознано: '+it.name:'Очищено 0%'}</p><div class="modal-actions recognition-actions"><button id="cleanKey" class="primary" title="Очистить следующий участок предмета">Распознать</button><button id="stashUnknown" ${!instance||!isUnknown(instance)||!state.upgrade||state.junk.includes(instance)?'disabled':''}>Отложить в Диковинки</button><button id="backCollection">К коллекции</button></div>`);
   const canvas=$('dirt'),ctx=canvas.getContext('2d',{willReadFrequently:true});let down=false,complete=done,strokes=0;
   if(!done){ctx.fillStyle='#736650';ctx.fillRect(0,0,360,270);for(let i=0;i<150;i++){ctx.fillStyle=i%2?'#8f7d60':'#5d513f';ctx.beginPath();ctx.arc(Math.random()*360,Math.random()*270,rand(1,5),0,7);ctx.fill();}}
-  function check(){if(complete)return;const data=ctx.getImageData(0,0,360,270).data;let clear=0;for(let i=3;i<data.length;i+=16)if(data[i]<50)clear++;const pct=Math.round(clear/(data.length/16)*100);$('cleanBar').style.width=pct+'%';$('cleanStatus').textContent=`Очищено ${pct}%`;if(pct>=85){complete=true;ctx.clearRect(0,0,360,270);recognizeItem(type,instance);$('cleanBar').style.width='100%';$('recognitionTitle').textContent=it.name;$('cleanKey').disabled=true;render();if(state.inspectCat!==null)renderInspection();save();beep();}}
+  function check(){if(complete)return;const data=ctx.getImageData(0,0,360,270).data;let clear=0;for(let i=3;i<data.length;i+=16)if(data[i]<50)clear++;const pct=Math.round(clear/(data.length/16)*100);$('cleanBar').style.width=pct+'%';$('cleanStatus').textContent=`Очищено ${pct}%`;if(pct>=85){complete=true;ctx.clearRect(0,0,360,270);recognizeItem(type,instance);$('cleanBar').style.width='100%';$('recognitionTitle').textContent=it.name;$('cleanKey').disabled=true;$('cleanKey').textContent='Распознано';$('stashUnknown').disabled=true;render();if(state.inspectCat!==null)renderInspection();save();beep();}}
   function erase(x,y){if(complete)return;ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(x,y,33,0,Math.PI*2);ctx.fill();check();}
   function point(e){const r=canvas.getBoundingClientRect();erase((e.clientX-r.left)/r.width*360,(e.clientY-r.top)/r.height*270);}
   canvas.onpointerdown=e=>{down=true;canvas.setPointerCapture(e.pointerId);point(e);};canvas.onpointermove=e=>{if(down)point(e);};canvas.onpointerup=canvas.onpointercancel=()=>down=false;
-  $('cleanKey').disabled=done;$('cleanKey').onclick=()=>{erase(20+(strokes%8)*45,20+Math.floor(strokes/8)*45);strokes++;};
+  $('cleanKey').disabled=done;if(done)$('cleanKey').textContent='Распознано';$('cleanKey').onclick=()=>{erase(20+(strokes%8)*45,20+Math.floor(strokes/8)*45);strokes++;};
+  $('stashUnknown').onclick=()=>{if(!instance||!isUnknown(instance)||!state.upgrade||state.junk.includes(instance))return;state.bag=state.bag.filter(x=>x!==instance);state.stock=state.stock.filter(x=>x!==instance);delete instance.boxPos;state.junk.push(instance);closeModal();render();if(state.inspectCat!==null)renderInspection();save();};
   $('backCollection').onclick=()=>{closeModal();openCollection();};
 }
 function openRanks(){if(state.paused)return;modal(`<h2>Имя вашей лавки</h2><p>Репутация: ${state.rep}. За выданный заказ +4.<br>В этой истории доступны первые три ранга.</p><div class="rank-list">${rankNames.map((name,i)=>`<div class="rank-row ${i===rank()?'current':''} ${i>2?'locked':''}"><span>${i+1}. ${name}</span><span>${i>2?'🔒 позже':i===rank()?'Ваш ранг':i<rank()?'✓':i*12+' реп.'}</span></div>`).join('')}</div>`);}
@@ -647,6 +662,7 @@ function loadGame(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s?
 function help(){if(state.paused)return;modal('<h2>Как работает лавка</h2><div class="rules"><b>Закупка.</b> Купите мешок за 10 монет. Содержимое заранее неизвестно.<br><b>Порядок.</b> Перетаскивайте вещи на полки. Или нажмите вещь, затем коробку. Ошибка подскажет категорию.<br><b>Заказ.</b> Листок справа. Недостающее появится в новых мешках. Откройте коробку и отправляйте нужное в посылку.<br><b>Диковинки.</b> За 20 монет купите временную коробку и убирайте остаток мешка одним действием.<br><b>Атлас.</b> Очистите находку и сохраните её изображение. Товар остаётся для продажи.<br><b>Вечер.</b> Новые приходы прекращаются; закончите дела и нажмите «Закончить день».</div>');}
 
 function setup(){
+  const sky=document.createElement('div');sky.id='daylight';sky.setAttribute('aria-hidden','true');sky.innerHTML='<i class="sky-morning"></i><i class="sky-day"></i><i class="sky-evening"></i><i class="sky-night"></i>';$('game').querySelector(':scope > header').prepend(sky);
   hidden('tooltip',true);$('tooltip').setAttribute('role','tooltip');
   const board=document.createElement('aside');board.id='orderBoard';board.className='hidden';board.setAttribute('aria-label','Принятые поручения');$('game').append(board);
   $('game').addEventListener('pointerover',e=>{

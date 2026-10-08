@@ -291,15 +291,13 @@ html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',san
 #work:has(#inspector.junk-open:not(.hidden)) #checklist{visibility:hidden}
 #effects:has(#tutorialGuide){z-index:1500}
 #tutorialGuide{position:absolute;inset:0;z-index:1500;pointer-events:none}
-.tutorial-ring{position:absolute;border:3px solid #ffdb62;border-radius:12px;box-shadow:0 0 18px #ffe18799;animation:tutorialPulse 1s ease-in-out infinite}
 .tutorial-hand{position:absolute;font-size:44px;line-height:1;text-shadow:0 3px 5px #000;animation:tutorialPoint 1s ease-in-out infinite}
 .tutorial-note{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:670px;max-width:90%;padding:12px 16px;background:#292016f5;border:2px solid #dbb65c;border-radius:10px;text-align:center;color:#ffe3a2;box-shadow:0 5px 22px #0008;font-size:18px}
 .tutorial-note button{pointer-events:auto;font-size:12px;padding:4px 8px;margin-left:14px}
 .cleaning .tutorial-hand{animation:tutorialClean 1.7s linear infinite}
-@keyframes tutorialPulse{50%{box-shadow:0 0 28px #ffdc63;opacity:.65}}
 @keyframes tutorialPoint{50%{transform:translateY(10px)}}
 @keyframes tutorialClean{0%{transform:translate(40px,0)}25%{transform:translate(0,35px)}50%{transform:translate(-40px,0)}75%{transform:translate(0,-35px)}100%{transform:translate(40px,0)}}
-@media(prefers-reduced-motion:reduce){.tutorial-ring,.tutorial-hand,.cleaning .tutorial-hand{animation:none}}
+@media(prefers-reduced-motion:reduce){.tutorial-hand,.cleaning .tutorial-hand{animation:none}}
 
 /* Guest alert stays above the workbench, open boxes and dialogs. */
 #arrivalSignal{bottom:82px;left:28px;z-index:400000;pointer-events:auto}
@@ -320,3 +318,52 @@ html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',san
 #orderBoard .order-card small{grid-column:2;grid-row:1;font-size:11px}
 .order-card-action{grid-column:2;grid-row:2;font-size:13px;color:#4d5428}
 @media(prefers-reduced-motion:reduce){#arrivalSignal.waiting:not(.compact),#ship.dispatch-ready{animation:none}}
+
+/* Soft radial rays replace interaction outlines and tutorial frames. */
+:where(button,[role="button"]){position:relative;isolation:isolate}
+:where(.clean-stage,#parcelDrop){isolation:isolate}
+:where(button,[role="button"],#parcelDrop,.clean-stage)::after{
+ content:'';position:absolute;inset:-24%;z-index:-1;pointer-events:none;border:0;border-radius:50%;opacity:0;
+ background:radial-gradient(ellipse,#fff0b066 0%,#ffd25655 28%,#e9a8251a 50%,transparent 70%),repeating-conic-gradient(from 12deg,#ffd86b00 0deg,#ffcc491a 7deg,#ffcc4966 15deg,#ffcc491a 23deg,#ffd86b00 30deg);
+ mask-image:radial-gradient(ellipse,#000 8%,#0009 32%,transparent 68%);filter:blur(5px);
+}
+:where(button,[role="button"],#parcelDrop):not(:disabled):is(:hover,:focus-visible,.tutorial-focus,.chosen,.drop-ready,.upgrade-prompt,.dispatch-ready)::after,
+.clean-stage.tutorial-focus::after{opacity:1;animation:goldenAura 2.143s ease-in-out infinite}
+@keyframes goldenAura{0%,100%{opacity:.6;transform:scale(.97) rotate(-1.5deg)}50%{opacity:.82;transform:scale(1.03) rotate(1.5deg)}}
+button:focus-visible,[role="button"]:focus-visible{outline:none}
+.item.chosen{animation:none;outline:none;border:0;box-shadow:none;background:none}
+.shelf-box.drop-ready{outline:none;border:0;border-radius:0;background:none;filter:none}
+#parcelDrop.drop-ready{outline:none}
+.item.tutorial-focus{z-index:200001!important}
+.shelf-box:is(:hover,.tutorial-focus,.drop-ready) .boxart{filter:drop-shadow(0 0 5px #ffcf67)}
+#upgradesNav.upgrade-prompt,#ship.dispatch-ready{animation:none;box-shadow:0 3px 0 #171311}
+#arrivalSignal.waiting:not(.compact){box-shadow:0 5px 14px #160e09aa;animation:arrivalWarmth 1.5s ease-in-out infinite}
+@keyframes arrivalWarmth{50%{background:#795d2df5}}
+.recognition-actions{display:grid;grid-template-columns:1fr 1fr;justify-items:center;gap:10px;margin:12px auto 0}
+.recognition-actions button{min-width:225px}
+.recognition-actions #cleanKey{grid-column:1/-1;font-size:20px}
+#modalContent:has(.recognition-actions) .clean-stage{overflow:visible;width:320px;height:240px;border:0;background:none;border-radius:0}
+#modalContent:has(.recognition-actions) #cleanStatus{margin:9px 0;min-height:26px}
+/* Four blended skies keep time readable without numerical countdowns. */
+#game>header{isolation:isolate;background:#18222c}
+#daylight{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+#daylight i{position:absolute;inset:0;opacity:0;transition:opacity .4s linear}
+#daylight::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#161719bb,transparent 38%,transparent 62%,#101723b0)}
+.sky-morning{background:radial-gradient(ellipse at 48% 110%,#ffe5a5 0%,#c88e66 25%,#5b6680 68%,#303f58)}
+.sky-day{background:radial-gradient(ellipse at 51% -25%,#fff4ba 0%,#8cbbcc 38%,#436780 77%,#304759)}
+.sky-evening{background:radial-gradient(ellipse at 55% 105%,#d98c51 0%,#714862 34%,#28354f 75%,#202535)}
+.sky-night{background:radial-gradient(circle at 55% 24%,#e4e8f4 0 2px,transparent 3px),radial-gradient(circle at 36% 60%,#9caecc 0 1px,transparent 2px),radial-gradient(circle at 64% 45%,#c2d1e4 0 1px,transparent 2px),radial-gradient(ellipse at 50% 0,#253859,#101729 70%)}
+#game>header .day{padding:6px 14px;border-radius:20px;background:#10203165;text-shadow:0 1px 3px #101728;gap:3px}
+#game>header .day .suntrack{display:none}
+#game>header #clock{font-size:17px;font-weight:600;letter-spacing:1px;color:#ffe5ad}
+#game[data-period="night"]>header #clock{color:#d0dffa}
+@media(prefers-reduced-motion:reduce){
+ :where(button,[role="button"],#parcelDrop,.clean-stage)::after{animation:none!important;transform:none!important}
+ #daylight i{transition:none}
+}
+
+/* Keep the counter lit while the city outside follows the sky. */
+#reception::before,#reception::after{content:'';position:absolute;inset:0 0 35%;z-index:0;pointer-events:none;transition:opacity .4s linear}
+#reception::before{background:linear-gradient(#7e382344,#fca44a44 50%,transparent);opacity:var(--light-evening,0)}
+#reception::after{background:linear-gradient(#070e28d9,#0b173bc9 72%,transparent);opacity:var(--light-night,0)}
+@media(prefers-reduced-motion:reduce){#reception::before,#reception::after{transition:none}}
