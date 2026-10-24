@@ -3,6 +3,7 @@ const TUTORIAL_KEY='guild-warehouse-tutorial-completed-v1';
 let tutorialTarget=null;
 function clearTutorialHighlight(){tutorialTarget?.classList.remove('tutorial-focus');tutorialTarget=null;}
 function startTutorial(){
+  if(Story.enabled()){Story.startTutorial();return;}
   try{if(localStorage.getItem(TUTORIAL_KEY)==='1')return;}catch{}
   const offer=state.schedule.shift();if(!offer)return;
   const helmet=makeItem(24),ingredient=makeItem(30),trophy=makeItem(0),unknown=makeItem(4);
@@ -29,6 +30,7 @@ function tutorialGuide(target,message,cleaning=false){
   Object.assign(hand.style,{left:(x+w/2-22)+'px',top:Math.max(4,cleaning?y+h/2-20:y-48)+'px'});
 }
 function tutorialFrame(){
+  if(Story.enabled()){Story.guide();return;}
   const t=state.tutorial;if(!state.started||!t?.active){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}
   const modalOpen=!$('modal').classList.contains('hidden');
   if(modalOpen&&$('resetLevel')){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}

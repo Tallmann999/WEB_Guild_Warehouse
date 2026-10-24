@@ -24,6 +24,9 @@ function mysteryType(type){return type%5===4;}
 function isUnknown(x){return !!x.unknown&&!state.collection.includes(x.type);}
 function gainGold(amount,origin){
   state.gold+=amount;state.dayIncome+=amount;updateHud();
+  animateGold(amount,origin);
+}
+function animateGold(amount,origin){
   const from=origin?.getBoundingClientRect?.()||{left:innerWidth/2,top:innerHeight/2,width:0,height:0};
   const target=$('gold').getBoundingClientRect();
   for(let i=0;i<Math.min(9,amount);i++){
@@ -54,7 +57,7 @@ function visitorQueue(){
   const waiting=[...state.offers.map(value=>({kind:'bag',value})),...allOrders().filter(o=>o.accepted===false).map(value=>({kind:'order',value}))];
   state.arrivalSerial=Math.max(state.arrivalSerial||0,...waiting.map(x=>x.value.arrivalSerial||0));
   for(const x of waiting)if(!x.value.arrivalSerial)x.value.arrivalSerial=++state.arrivalSerial;
-  return waiting.sort((a,b)=>a.value.arrivalSerial-b.value.arrivalSerial);
+  return waiting.sort((a,b)=>Number(b.kind==='bag'&&!!b.value.openingDay)-Number(a.kind==='bag'&&!!a.value.openingDay)||a.value.arrivalSerial-b.value.arrivalSerial);
 }
 function counterGuest(){return state.visitorCooldown>0&&!state.tutorial?.active?null:visitorQueue()[0];}
 function startVisitorGap(kind='bag'){
@@ -74,6 +77,7 @@ function restoreOrders(){
   state.orderUid=Math.max(state.orderUid||0,...state.orders.map(o=>o.id||0));
   for(const o of state.orders)if(!o.id)o.id=++state.orderUid;
   state.order??=state.orders[0]||null;
+  if(Story.enabled()){Story.ensure();Dwarf.ensure();Goblin.ensure();Goblin.reconcile();return;}
   migrateIntroTiming();
   migrateLoot();
   if(!state.sortingBatches){state.sortingBatches=[];trackSortingBag(state.bag);}
@@ -107,7 +111,7 @@ function migrateIntroTiming(){
   state.orderSchedule=timing.orders.slice(Math.min(timing.orders.length,state.dayOrdersCreated));state.timingVersion=2;state.arrivalIdle=0;
   guaranteeOrder();
 }
-function owned(){return [...state.stock,...state.junk,...state.bag,...allOrders().flatMap(o=>o.packed)];}
+function owned(){return [...state.stock,...state.junk,...state.bag,...(state.unknownTray||[]),...allOrders().flatMap(o=>o.packed)];}
 function countType(type){return owned().filter(x=>x.type===type).length;}
 function remaining(r){return r.count-(state.order?.packed.filter(x=>x.type===r.type).length||0);}
 function orderComplete(){return !!state.order&&state.order.recipe.every(r=>remaining(r)===0);}
@@ -178,6 +182,7 @@ function updateHud(){
   }
   signal.classList.toggle('waiting',showArrival);hidden('arrivalSignal',!showArrival);
   if($('goldAdButton')&&$('receptionGoldAd'))updateGoldAd();
+  Story.update();
 }
 function setScreen(screen,mode=state.mode){if(screen==='work'&&mode==='order'&&!orderAccepted()){openOrder();return;}cancelDrag();state.screen=screen;state.mode=mode;state.activeCat=null;state.inspectCat=null;state.selected=null;hidden('inspector',true);hidden('targetPreview',true);hidden('tooltip',true);render();save();}
 function render(){
@@ -224,6 +229,7 @@ function renderReception(){
     if(!state.schedule.length&&!state.offers.length&&!state.orderSchedule?.length&&!state.nextBagOrder)button(action,'Закончить день',requestEndDay,'closeDay',!!state.bag.length);
   }
   $('stepHint').textContent='';
+  Story.render();
 }
 function planDay(firstArrival=0){
   state.dayCollectionStart=state.collection.length;
@@ -235,7 +241,7 @@ function planDay(firstArrival=0){
   for(let i=0;i<n;i++){const big=state.day===2&&i===2;state.schedule.push({at:timing?timing.adventurers[i]:i===0?firstArrival:Math.round(i*140/(n-1)),visitor:(state.day+i-1)%adventurers.length,big,loot:makeLoot(big)});}
   guaranteeOrder();tickArrivals();
 }
-function startGame(){state=freshState();state.started=true;last=performance.now();planDay();startTutorial();if(!state.offers.length&&state.schedule.length){state.schedule[0].at=0;tickArrivals();}render();save();}
+function startGame(){Story.start();}
 function restartWithTutorial(){
   if(state.autoSorting)return;
   try{localStorage.removeItem(TUTORIAL_KEY);}catch{}
@@ -248,6 +254,7 @@ function openSettings(){
   $('resetLevel').onclick=restartWithTutorial;
 }
 function tickArrivals(){
+  if(Story.enabled()){Story.arrivals();return;}
   if(state.visitorCooldown>0)return;
   if(counterGuest()){state.visitorGapPending=false;return;}
   let changed=false;
@@ -272,20 +279,32 @@ function tickArrivals(){
   if(changed){if(state.screen==='work')updateHud();else renderReception();save();}
 }
 function waitAtWindow(){if(state.paused)return;const next=state.schedule[0];if(next){state.seconds=Math.max(0,CONFIG.daySeconds-next.at);tickArrivals();render();}}
+function tutorialTablePosition(index,count){
+  const columns=Math.min(4,Math.max(1,count)),rows=Math.ceil(count/columns);
+  return {x:columns===1?.5:.08+(index%columns)*.84/(columns-1),y:rows===1?.35:.08+Math.floor(index/columns)*.84/(rows-1)};
+}
+function repairTableLayout(list){
+  const invalid=list.some(x=>x.tablePos&&(!Number.isFinite(x.tablePos.x)||!Number.isFinite(x.tablePos.y)||x.tablePos.x<0||x.tablePos.x>1||x.tablePos.y<0||x.tablePos.y>1));
+  if(invalid)list.forEach((x,i)=>{x.tablePos=tutorialTablePosition(i,list.length);});
+  return invalid;
+}
 function buyBag(){
   if(state.paused||!state.offers.length||counterGuest()?.kind!=='bag')return;
   prepareOffer(state.offers[0]);if(state.gold<state.offers[0].price)return;
   const offer=state.offers.shift();state.gold-=offer.price;state.daySpent+=offer.price;state.dayBought++;
   startVisitorGap();
   state.bag.push(...offer.loot);state.combo=0;trackSortingBag(offer.loot);
-  for(const [i,x] of offer.loot.entries()){x.tablePos=offer.tutorial?{x:.12+i*.22,y:.35}:{x:Math.random(),y:Math.random()};x.depth=++depth;}
+  if(Story.enabled())Story.onBagPurchased(offer);
+  for(const [i,x] of offer.loot.entries()){x.tablePos=offer.tutorial?tutorialTablePosition(i,offer.loot.length):{x:Math.random(),y:Math.random()};x.depth=++depth;}
   if(!INTRO_TIMING[state.day]&&!allOrders().some(o=>o.accepted===false)&&(!allOrders().length||state.offers.length||state.schedule.length))state.nextBagOrder=true;setScreen('work','sort');beep();
 }
 function advanceReadyVisitor(dt){
+  if(Story.enabled())return;
   if(state.visitorGapPending||counterGuest()||(state.bag.length&&state.screen!=='reception'))return;
   if(state.schedule.length||state.orderSchedule?.length||state.nextBagOrder)startVisitorGap('idle');
 }
 function createOrder(keepSelection=false){
+  if(Story.enabled())return Story.createOrder(keepSelection);
   if(INTRO_TIMING[state.day]&&(state.dayOrdersCreated||0)>=INTRO_TIMING[state.day].orders.length)return;
   const active=state.order;
   const types=[...new Set([...owned(),...[...state.offers,...state.schedule].flatMap(s=>s.loot)].map(x=>x.type))];if(!types.length)return;
@@ -334,7 +353,7 @@ function renderWork(){
   }
   renderChecklist();hidden('autoSortButton',!sort);$('autoSortButton').disabled=!state.bag.length||state.autoSorting;
   hidden('sweepButton',!sort||!state.upgrade);$('sweepButton').disabled=!state.bag.length;
-  hidden('sortingDone',true);renderOrderBoard();updateHud();
+  hidden('sortingDone',true);renderOrderBoard();updateHud();Story.render();
 }
 function renderShelves(){
   $('shelves').innerHTML='';
@@ -374,7 +393,7 @@ function arrangeBox(area,list,kind){
 function renderItems(area,list,kind){
   hidden('tooltip',true);
   area.classList.remove('crowded-pile');
-  if(kind==='table')area.style.height='';
+  if(kind==='table'){area.style.height='';repairTableLayout(list);}
   if(!list.length){if(kind!=='table')area.style.height='100%';area.innerHTML='<div class="empty-pile">Здесь пока пусто</div>';return;}
   const table=kind==='table',size=table?79:60,width=area.clientWidth||450,columns=Math.max(1,Math.floor((width-20)/68));
   const key=itemPositionKey(kind);
@@ -386,6 +405,10 @@ function renderItems(area,list,kind){
     const b=button(area,'',e=>clickItem(x,kind,e));b.className='item'+(state.selected===x.uid?' chosen':'');b.dataset.uid=x.uid;b.dataset.kind=kind;
     const unknown=isUnknown(x);b.classList.toggle('mystery-item',unknown);
     b.setAttribute('aria-label',unknown?'Неизвестная находка':items[x.type].name);
+    if(Story.enabled()){
+      const owner=allOrders().find(o=>o.reservedUids?.includes(x.uid));
+      if(owner){b.title='Резерв: '+owner.title+(Goblin.isAssigned(owner)?' · собирает Грик':' · ручная посылка');b.dataset.reservedFor=owner.id;}
+    }
     b.innerHTML=`<img src="${asset(items[x.type].sprite)}" alt="${unknown?'Неизвестная находка':items[x.type].name}" draggable="false">${unknown?'<span class="mystery-question">?</span>':''}`;
     b.style.left=(10+pos.x*Math.max(1,width-size-20))+'px';b.style.top=(table?10+pos.y*Math.max(1,area.clientHeight-size-20):pos.y)+'px';
     b.style.transform=`rotate(${!table&&x.boxAngle!==undefined?x.boxAngle:x.uid%21-10}deg)`;b.style.zIndex=x.depth||i+1;
@@ -397,6 +420,7 @@ function clickItem(x,kind,e){
   if(state.paused||state.autoSorting)return;
   if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
   if(isUnknown(x)){cancelDrag();openUnknown(x);return;}
+  if(Story.enabled())Dwarf.release(x.uid);
   const node=e?.currentTarget||document.querySelector(`.item[data-uid="${x.uid}"][data-kind="${kind}"]`);if(!node)return;
   const r=node.getBoundingClientRect();cancelDrag();state.selected=x.uid;
   drag={uid:x.uid,item:x,node,kind,x:r.left+r.width/2,y:r.top+r.height/2,grabX:r.width/scale/2,grabY:r.height/scale/2,active:false,clickHeld:true};
@@ -411,6 +435,7 @@ function rewardSortedItem(uid){
   const batch=batches.find(b=>b.pending.includes(uid));if(!batch)return;
   batch.pending=batch.pending.filter(id=>id!==uid);if(batch.pending.length)return;
   state.sortingBatches=batches.filter(b=>b!==batch);
+  if(Story.enabled()){Story.checkCompletion();return;}
   $('sortingReward')?.remove();
   const panel=document.createElement('div');panel.id='sortingReward';panel.setAttribute('role','status');panel.setAttribute('aria-live','polite');
   panel.innerHTML='<strong>Поздравляем, вы правильно отсортировали!</strong><b>+10 монет</b>';
@@ -428,9 +453,10 @@ function sortItem(uid,cat){
 }
 function packItem(uid){
   if(state.paused||!orderAccepted())return;const i=state.stock.findIndex(x=>x.uid===uid);if(i<0)return;const x=state.stock[i];
+  if(Story.enabled()&&!Goblin.canUse(uid,state.order.id)){toast('Этот экземпляр зарезервирован другой посылке. Договорённость можно вернуть себе в книге.');return;}
   if(isUnknown(x)){openUnknown(x);return;}
   const line=state.order.recipe.find(r=>r.type===x.type&&remaining(r)>0);if(!line){wrong('Эта вещь сейчас не нужна. Она остаётся в коробке.',$('parcelDrop'));return;}
-  state.stock.splice(i,1);state.order.packed.push(x);if(orderComplete()){state.activeCat=null;state.inspectCat=null;hidden('inspector',true);hidden('targetPreview',true);}const scroll=$('sourceScroll')?.scrollTop||0;renderWork();if($('sourceScroll'))$('sourceScroll').scrollTop=scroll;beep();save();
+  state.stock.splice(i,1);state.order.packed.push(x);if(Story.enabled())Goblin.reconcile();if(orderComplete()){state.activeCat=null;state.inspectCat=null;hidden('inspector',true);hidden('targetPreview',true);}const scroll=$('sourceScroll')?.scrollTop||0;renderWork();if($('sourceScroll'))$('sourceScroll').scrollTop=scroll;beep();save();
 }
 function renderOrderBoard(){
   const board=$('orderBoard');if(!board)return;
@@ -439,7 +465,8 @@ function renderOrderBoard(){
   hidden('orderBoard',!list.length||!state.started||(state.screen==='work'&&state.mode==='order'));
   for(const o of list.slice(0,4)){
     const total=o.recipe.reduce((n,r)=>n+r.count,0),card=button(board,'',()=>openOrder(o));card.className='order-card';card.dataset.orderId=o.id;
-    card.innerHTML=`<strong>${customers[o.customer][0]}</strong><span>${o.recipe.map(r=>`<img src="${asset(items[r.type].sprite)}" alt="${items[r.type].name}">`).join('')}</span><small>${o.packed.length}/${total} · ${o.reward} монет</small><b class="order-card-action">${o.packed.length===total?'Посылка готова':'Собрать посылку'}</b>`;
+    const automated=Story.enabled()&&Goblin.isAssigned(o);card.classList.toggle('goblin-order',automated);
+    card.innerHTML=`<strong>${customers[o.customer][0]}${o.regularKey?' · регулярно':''}</strong><span>${o.recipe.map(r=>`<img src="${asset(items[r.type].sprite)}" alt="${items[r.type].name}">`).join('')}</span><small>${o.packed.length}/${total} · ${o.reward} монет</small><b class="order-card-action">${automated?'Собирает Грик · управление':o.packed.length===total?'Посылка готова':'Собрать посылку'}</b>`;
   }
 }
 function showOrders(){
@@ -452,21 +479,26 @@ function openOrder(candidate){if(!state.started||state.paused||state.autoSorting
   const head=counterGuest();
   const o=candidate?.recipe?candidate:(head?.kind==='order'?head.value:allOrders().find(o=>o.accepted!==false));
   if(!o){toast('Новый заказ появится после покупки следующего мешка.');return;}
+  if(Story.enabled()&&Goblin.isAssigned(o)){Contracts.openBook();return;}
   if(o.accepted===false&&(head?.kind!=='order'||head.value!==o)){toast('Этот посетитель ждёт своей очереди.');return;}
-  if(o.accepted!==false){state.order=o;setScreen('work','order');save();return;}
+  if(o.accepted!==false){state.order=o;if(Story.enabled())Goblin.reconcile();setScreen('work','order');save();return;}
   setScreen('reception','sort');
   const c=customers[o.customer],accepted=o.accepted!==false;
   modal(`<div class="brief-eyebrow">ПОРУЧЕНИЕ</div><h2>${c[0]}</h2><p>${c[1]}</p>${o.title?`<h3>${o.title}</h3>`:""}${o.description?`<p>${o.description}</p>`:""}<div class="brief-list">${o.recipe.map(r=>{const packed=o.packed.filter(x=>x.type===r.type).length;return `<div><img src="${asset(items[r.type].sprite)}" alt="${items[r.type].name}"><span>${items[r.type].name}<small>На складе: ${state.stock.filter(x=>x.type===r.type).length}</small></span><b>${packed}/${r.count}</b></div>`;}).join('')}</div><p>Оплата: <b>${o.reward} монет</b></p><button id="${accepted?'beginAssembly':'acceptOrder'}" class="primary">${accepted?'Начать собирать':'Принять поручение'}</button>`,{brief:true});
   if(accepted)$('beginAssembly').onclick=()=>{state.order=o;closeModal();setScreen('work','order');};
-  else $('acceptOrder').onclick=()=>{if(counterGuest()?.value!==o)return;if(allOrders().filter(x=>x.accepted!==false).length>=4){toast('Уже приняты 4 поручения. Сначала выдайте одну посылку.');return;}o.accepted=true;state.order=o;startVisitorGap('order');closeModal();render();save();$('orderBoard').querySelector('button')?.focus();};
+  else $('acceptOrder').onclick=()=>{if(counterGuest()?.value!==o)return;if(allOrders().filter(x=>x.accepted!==false).length>=4){toast('Уже приняты 4 поручения. Сначала выдайте одну посылку.');return;}o.accepted=true;state.order=o;startVisitorGap('order');if(Story.enabled())Story.onOrderAccepted();closeModal();render();save();$('orderBoard').querySelector('button')?.focus();};
 }
 function finishOrder(){
   if(state.paused||!orderAccepted()||!orderComplete()||state.activeCat!==null)return;
-  const amount=state.order.reward,oldRank=rank();state.rep+=4;state.totalOrders++;state.dayOrders++;
+  if(Story.enabled()&&Goblin.isAssigned(state.order))return;
+  const delivered=state.order,amount=delivered.reward,oldRank=rank();state.rep+=4;state.totalOrders++;state.dayOrders++;
   state.orders=allOrders().filter(o=>o!==state.order);state.order=state.orders[0]||null;
-  setScreen('reception');beep();save();
+  state.gold+=amount;state.dayIncome+=amount;
+  if(Story.enabled())Story.onOrderDelivered(delivered,'manual');
+  setScreen('reception');beep();
   showOrderReward(amount,rank()>oldRank);
-  gainGold(amount,$('orderReward').querySelector('strong'));save();
+  animateGold(amount,$('orderReward').querySelector('strong'));
+  save();
 }
 function requestEndDay(){
   if(state.ended){showSummary();return;}
@@ -500,6 +532,7 @@ function closeInspection(){cancelDrag();state.inspectCat=null;state.selected=nul
 function pointerDown(e,x,node,kind){
   if(e.button!==0||state.paused||state.autoSorting)return;
   if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
+  if(Story.enabled())Dwarf.release(x.uid);
   const r=node.getBoundingClientRect();drag={uid:x.uid,item:x,node,kind,x:e.clientX,y:e.clientY,grabX:(e.clientX-r.left)/scale,grabY:(e.clientY-r.top)/scale,active:false};node.setPointerCapture(e.pointerId);
 }
 function cancelDrag(){if(drag){drag.ghost?.remove();drag.node.style.opacity='';drag=null;state.selected=null;}$('heldRecognize')?.remove();}
@@ -568,6 +601,7 @@ const UPGRADE_DEFS=[
  {key:'orderBonus',name:'Доброе имя',art:'ledger',price:30,description:'+5 монет за каждое новое поручение после покупки.'}
 ];
 function openUpgrade(){
+ if(Story.enabled()){Story.showBusiness();return;}
  if(!state.started||state.paused)return;
  if(state.day>1||state.ended){state.upgradeHintSeen=true;updateHud();save();}
  modal('<h2>Улучшения лавки</h2><p>В казне: '+state.gold+' монет</p><div class="upgrade-grid">'+UPGRADE_DEFS.map((u,i)=>`<article class="upgrade-card"><img src="${asset('storage/'+u.art)}" alt=""><h3>${u.name}</h3><p>${u.description}</p><button class="primary" id="${i===0?'buyUpgrade':'buyUpgrade'+i}" ${state[u.key]||state.gold<u.price?'disabled':''}>${state[u.key]?'Приобретено':'Купить · '+u.price+' монет'}</button></article>`).join('')+'</div>',{wide:true});
@@ -591,6 +625,7 @@ function recognizeItem(type,instance){
   const reward=(newlyKnown?5:0)+(wasUnknown?7:0);
   const status=$('cleanStatus');if(status){status.classList.add('recognition-result');status.innerHTML=`<strong>Вы распознали: ${items[type].name}</strong><span id="recognitionGold">+${reward} монет</span><span>+${newlyKnown?1:0} репутация</span>`;}
   if(reward)gainGold(reward,$('recognitionGold')||status);
+  if(Story.enabled())Story.afterRecognition(instance);
   save();return {newlyKnown,wasUnknown,reward};
 }
 function openCollection(){
@@ -608,7 +643,7 @@ function openCleaning(type,instance=owned().find(x=>x.type===type&&isUnknown(x))
   function point(e){const r=canvas.getBoundingClientRect();erase((e.clientX-r.left)/r.width*360,(e.clientY-r.top)/r.height*270);}
   canvas.onpointerdown=e=>{down=true;canvas.setPointerCapture(e.pointerId);point(e);};canvas.onpointermove=e=>{if(down)point(e);};canvas.onpointerup=canvas.onpointercancel=()=>down=false;
   $('cleanKey').disabled=done;if(done)$('cleanKey').textContent='Распознано';$('cleanKey').onclick=()=>{erase(20+(strokes%8)*45,20+Math.floor(strokes/8)*45);strokes++;};
-  $('stashUnknown').onclick=()=>{if(!instance||!isUnknown(instance)||!state.upgrade||state.junk.includes(instance))return;state.bag=state.bag.filter(x=>x!==instance);state.stock=state.stock.filter(x=>x!==instance);delete instance.boxPos;state.junk.push(instance);closeModal();render();if(state.inspectCat!==null)renderInspection();save();};
+  $('stashUnknown').onclick=()=>{if(!instance||!isUnknown(instance)||!state.upgrade||state.junk.includes(instance))return;state.bag=state.bag.filter(x=>x!==instance);state.stock=state.stock.filter(x=>x!==instance);if(state.unknownTray)state.unknownTray=state.unknownTray.filter(x=>x!==instance);delete instance.boxPos;state.junk.push(instance);closeModal();render();if(state.inspectCat!==null)renderInspection();save();};
   $('backCollection').onclick=()=>{closeModal();openCollection();};
 }
 function openRanks(){if(state.paused)return;modal(`<h2>Имя вашей лавки</h2><p>Репутация: ${state.rep}. За выданный заказ +4.<br>В этой истории доступны первые три ранга.</p><div class="rank-list">${rankNames.map((name,i)=>`<div class="rank-row ${i===rank()?'current':''} ${i>2?'locked':''}"><span>${i+1}. ${name}</span><span>${i>2?'🔒 позже':i===rank()?'Ваш ранг':i<rank()?'✓':i*12+' реп.'}</span></div>`).join('')}</div>`);}
@@ -627,6 +662,7 @@ async function autoSort(){
     const queue=state.bag.filter(x=>!isUnknown(x));
     for(let i=queue.length-1;i>0;i--){const j=rand(0,i);[queue[i],queue[j]]=[queue[j],queue[i]];}
     for(const x of queue){
+      if(Story.enabled())Dwarf.release(x.uid);
       const cat=items[x.type].cat;
       await flyToShelf(x,cat);
       const index=state.bag.findIndex(item=>item.uid===x.uid);if(index<0)continue;
@@ -658,7 +694,7 @@ async function flyToShelf(item,cat){
   }finally{ghost.remove();source.style.opacity='';}
 }
 function hasSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));return s?.version===1&&s.started;}catch{return false;}}
-function loadGame(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s?.version!==1||!Array.isArray(s.stock)||!Array.isArray(s.bag))return;state={...freshState(),...s,paused:false,autoSorting:false,selected:null,inspectCat:null,activeCat:null};restoreOrders();depth=Math.max(100,...owned().map(x=>x.depth||0));render();if(state.ended)showSummary();}catch{toast('Не удалось прочитать сохранение. Можно начать заново.');}}
+function loadGame(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s?.version!==1||!Array.isArray(s.stock)||!Array.isArray(s.bag))return;state={...freshState(),...s,paused:false,autoSorting:false,selected:null,inspectCat:null,activeCat:null};const repaired=repairTableLayout(state.bag);restoreOrders();depth=Math.max(100,...owned().map(x=>x.depth||0));render();if(Story.enabled())Story.afterLoad();else if(state.ended)showSummary();if(repaired)save();}catch{toast('Не удалось прочитать сохранение. Можно начать заново.');}}
 function help(){if(state.paused)return;modal('<h2>Как работает лавка</h2><div class="rules"><b>Закупка.</b> Купите мешок за 10 монет. Содержимое заранее неизвестно.<br><b>Порядок.</b> Перетаскивайте вещи на полки. Или нажмите вещь, затем коробку. Ошибка подскажет категорию.<br><b>Заказ.</b> Листок справа. Недостающее появится в новых мешках. Откройте коробку и отправляйте нужное в посылку.<br><b>Диковинки.</b> За 20 монет купите временную коробку и убирайте остаток мешка одним действием.<br><b>Атлас.</b> Очистите находку и сохраните её изображение. Товар остаётся для продажи.<br><b>Вечер.</b> Новые приходы прекращаются; закончите дела и нажмите «Закончить день».</div>');}
 
 function setup(){
@@ -697,6 +733,7 @@ function setup(){
   $('sound').onclick=()=>{state.muted=!state.muted;beep();updateHud();save();};
   $('settings').onclick=openSettings;
   $('pause').onclick=()=>{if(state.paused||!state.started)return;modal('<h2>Лавка на паузе</h2><p>Часы остановлены. Все находки на своих местах.</p><button id="resume" class="primary">Продолжить</button>');$('resume').onclick=closeModal;};
+  Story.setup();
 }
 addEventListener('keydown',e=>{
   if(!$('modal').classList.contains('hidden')){
@@ -708,6 +745,6 @@ addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(drag){cancelDrag();return;}if(state.inspectCat!==null)closeInspection();else if(state.selected!==null){state.selected=null;renderWork();}else if(state.activeCat!==null){state.activeCat=null;renderWork();}else if(state.screen==='work')setScreen('reception');}
 });
 document.addEventListener('visibilitychange',()=>{last=performance.now();save();});addEventListener('pagehide',save);addEventListener('resize',()=>{resize();positionRecognition(drag?.ghost||$('heldRecognize')?.sourceNode);});
-function tick(now){const dt=Math.min(1,(now-last)/1000);last=now;if(state.started&&!state.paused&&!state.ended&&!state.autoSorting&&!document.hidden){if(!state.tutorial?.active){state.seconds=Math.max(0,state.seconds-dt*(state.screen==='work'?CONFIG.workTimeRate:1));advanceVisitorGap(dt);tickArrivals();advanceReadyVisitor(dt);}updateHud();saveClock+=dt;if(saveClock>=5){saveClock=0;save();}}tutorialFrame();requestAnimationFrame(tick);}
+function tick(now){const dt=Math.min(1,(now-last)/1000);last=now;if(state.started&&!state.paused&&!state.ended&&!state.autoSorting&&!document.hidden){if(Story.enabled())Story.advance(dt);else if(!state.tutorial?.active){state.seconds=Math.max(0,state.seconds-dt*(state.screen==='work'?CONFIG.workTimeRate:1));advanceVisitorGap(dt);tickArrivals();advanceReadyVisitor(dt);}updateHud();saveClock+=dt;if(saveClock>=5){saveClock=0;save();}}tutorialFrame();requestAnimationFrame(tick);}
 
 setup();resize();render();requestAnimationFrame(tick);

@@ -1,0 +1,110 @@
+/* The inheritance chapter transforms the existing shop. Its overlays sit behind play. */
+#game.story-mode{--story-ink:#f7e8ca;--story-muted:#cdbb9a;--story-gold:#dfbd75}
+.story-mode #reception .roomlabel{display:none}
+.story-mode #reception .shade{pointer-events:none;z-index:0;transition:background 1.8s ease}
+.story-mode[data-shop="neglected"] #reception .shade{background:linear-gradient(90deg,#130f0ae8,transparent 29%,#493c1930 58%,#130e08b0),linear-gradient(0deg,#3022132b,#3b331c50)}
+.story-mode #reception .shade::before{content:"";position:absolute;left:330px;top:10px;width:215px;height:258px;transform-origin:0 50%;transform:rotate(-3deg);background:repeating-linear-gradient(90deg,transparent 0 35px,#261b12b3 36px 39px),repeating-linear-gradient(6deg,#372c21 0 4px,#443629 7px 11px,#3b2d21 16px 22px);border:8px solid #2e241c;box-shadow:9px 8px 15px #150f0b88,inset 0 0 28px #15100a99;opacity:.88;transition:transform 1.7s ease,opacity 1.4s ease,filter 1.6s ease}
+.story-mode #reception .shade::after{content:"";position:absolute;inset:0;background:url('assets/shop-weathering.svg') center top/100% 100% no-repeat;opacity:.82;transition:opacity 1.4s ease}
+.story-mode[data-shop="restored"] #reception .shade{background:linear-gradient(90deg,#17110792,transparent 29%,transparent 73%,#17110770),radial-gradient(ellipse at 58% 12%,#ffe1a827,transparent 58%)}
+.story-mode[data-shop="restored"] #reception .shade::before{opacity:0;transform:translateX(-190px) rotate(-9deg);filter:brightness(1.35)}
+.story-mode[data-shop="restored"] #reception .shade::after{opacity:0}
+.story-mode #storyObjective{position:absolute;z-index:12;top:92px;left:36px;width:304px;display:grid;gap:5px;padding:0 0 0 13px;color:var(--story-ink);text-align:left;text-shadow:0 2px 4px #110c08;pointer-events:none}
+.story-mode #storyObjective::before{content:"";position:absolute;left:0;top:2px;bottom:1px;width:2px;background:linear-gradient(transparent,#d6b570 18%,#d6b5707a 85%,transparent)}
+#storyObjective>span{font-size:10px;font-weight:600;letter-spacing:2.1px;color:#dec28d}
+#storyObjective>strong{font-size:20px;line-height:1.16;font-weight:600;max-width:295px}
+#storyObjective>small{font-size:13px;line-height:1.3;font-weight:400;color:#e0cfaf;max-width:290px}
+.story-mode #storyAction{position:absolute;top:112px;bottom:auto;left:36px;width:300px;z-index:5;padding:9px 13px;font-size:15px;line-height:1.15;min-height:40px;box-shadow:0 3px 0 #20160e,inset 0 1px #e2ddab33}
+.story-mode #storyAction[data-action="restore"]{background:linear-gradient(#9b743e,#69472a);border-color:#bc945d}
+.story-mode #storyAction[data-action="workshop"]{background:linear-gradient(#5e5846,#3b382d);border-color:#92845e}
+.story-mode #speech{top:167px;padding:20px 23px;width:300px;background:#dfcaa5f2;box-shadow:0 8px 17px #170f094a}
+.story-mode #speech .eyebrow{font-size:10px;letter-spacing:1.6px}
+.story-mode #speech h2{font-size:24px;margin:7px 0 9px}
+.story-mode #speech p{font-size:17px;line-height:1.38}
+.story-mode #dwarfStation{position:absolute;z-index:4;left:37px;bottom:101px;width:291px;height:98px;padding:13px 12px 12px 137px;text-align:left;background:linear-gradient(100deg,#3e302200 28%,#30271de8 48%,#30271de8 95%,#30271d00);border:0;border-radius:0;box-shadow:none;color:#e9d8b5;isolation:isolate}
+.story-mode #dwarfStation:hover{transform:none;background:linear-gradient(100deg,#3e302200 28%,#443625ed 48%,#3e3024ed 95%,#30271d00)}
+#dwarfStation>img{position:absolute;left:-1px;bottom:0;width:143px;height:186px;object-fit:contain;object-position:center bottom;pointer-events:none;filter:drop-shadow(0 6px 4px #1d130a88)}
+#dwarfStation .dwarf-name{display:block;font-size:20px;font-weight:700;color:#f3d995;letter-spacing:.2px}
+#dwarfStation .dwarf-status{display:block;font-size:13px;font-weight:400;line-height:1.25;margin-top:5px;min-height:30px;color:#dcccaa}
+#dwarfStation .dwarf-progress{display:block;height:4px;margin-top:8px;background:#1b160e;border-radius:4px;overflow:hidden}
+#dwarfStation .dwarf-progress i{display:block;height:100%;max-width:100%;background:linear-gradient(90deg,#899e65,#c5d78a);border-radius:4px;transition:width .3s linear}
+.story-mode #unknownTrayButton{flex:none;width:175px;min-height:39px;padding:8px 11px;font-size:13px;line-height:1.2;background:linear-gradient(#574d3b,#343027);border-color:#96815b}
+.story-mode .work-heading{gap:11px}
+.story-mode .work-heading>div:not(#workProgress){min-width:225px;max-width:490px}
+.story-mode .work-heading h1{font-size:18px}
+.story-mode .work-heading #workProgress{font-size:14px;min-width:0;max-width:130px;white-space:nowrap}
+.story-mode .work-heading #autoSortButton{min-width:139px}
+.story-mode #dwarfWorkStatus{position:absolute;left:86px;top:297px;z-index:6;display:flex;align-items:center;gap:11px;max-width:630px;height:24px;padding:1px 2px;color:#d5c39e;font-size:13px;font-weight:400;text-align:left;border:0;border-radius:0;background:none;box-shadow:none}
+.story-mode #dwarfWorkStatus:hover{transform:none;color:#f1d99e;filter:none}
+#dwarfWorkStatus .worker-label{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dwarfWorkStatus .worker-progress{flex:0 0 60px;display:block;width:60px;height:3px;background:#19160f;border-radius:3px;overflow:hidden}
+#dwarfWorkStatus .worker-progress>i{display:block;height:100%;max-width:100%;background:linear-gradient(90deg,#829763,#c5d78a);border-radius:3px;transition:width .3s linear}
+.story-mode:has(#work:not(.hidden)) #storyObjective{top:auto;bottom:18px;left:24px;width:588px;gap:2px;padding-left:13px;z-index:8}
+.story-mode:has(#work:not(.hidden)) #storyObjective>span{font-size:9px;letter-spacing:1.7px}
+.story-mode:has(#work:not(.hidden)) #storyObjective>strong{font-size:16px;max-width:570px;line-height:1.2}
+.story-mode:has(#work:not(.hidden)) #storyObjective>small{display:none}
+.story-mode:has(#work:not(.hidden)):has(#tutorialGuide) #storyObjective{display:none}
+.story-mode .tutorial-note{left:20px;right:auto;bottom:10px;width:680px;max-width:none;transform:none;text-align:left;font-size:16px;line-height:1.35;padding:11px 14px;border:1px solid #a88a55;border-radius:6px}
+.story-mode .tutorial-note button{font-size:11px;white-space:nowrap}
+.story-mode footer #stepHint:empty{display:none}
+.story-mode>footer nav{margin-left:auto}
+.story-mode .modal-card:has(#inheritanceLetter){width:640px;padding:37px 49px;background:radial-gradient(ellipse at 50% 0,#51452e,#332b20 75%);border:1px solid #a88a55;border-radius:10px;box-shadow:0 20px 70px #090704ad}
+#inheritanceLetter{position:relative}
+#inheritanceLetter::before{content:"✦";display:block;font-size:35px;color:#d3ad64;margin-bottom:9px;line-height:1}
+#inheritanceLetter h2{font-size:35px;margin:10px 0 18px}
+#inheritanceLetter p{font-size:17px;line-height:1.55;color:#dfd0b5;text-align:left;margin:12px 0}
+#inheritanceLetter blockquote{position:relative;margin:23px 0;padding:16px 21px;background:#211b1266;color:#ecd7ad;font-size:20px;font-weight:400;line-height:1.45;font-style:italic;text-align:left;border-left:2px solid #b8924f}
+#inheritanceLetter #acceptInheritance{margin-top:13px;min-width:304px;font-size:18px}
+.story-mode .modal-card:has(.story-business-grid){width:850px;padding:31px 38px 26px;background:radial-gradient(ellipse at 50% -35%,#665133,#2d271e 80%);border:1px solid #a88b59;border-radius:10px}
+.story-mode .modal-card:has(.story-business-grid)>h2{font-size:29px;margin:10px 0 8px}
+.story-mode .modal-card:has(.story-business-grid)>p{font-size:15px;line-height:1.5;margin:9px 0 18px;color:#d7c6a6}
+.story-business-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;text-align:left;margin-top:21px}
+.story-business-grid>article{position:relative;display:flex;flex-direction:column;padding:21px 22px 18px;background:linear-gradient(150deg,#74603d33,#1c191244);border:1px solid #aa8c4d44;border-radius:6px}
+.story-business-grid>article:first-child::before{content:"✦";font-size:29px;color:#d5b271;margin-bottom:7px;line-height:1}
+.story-business-grid>article:nth-child(2)::before{content:"";position:absolute;right:12px;top:10px;width:73px;height:86px;background:url('assets/dwarf-sorter.png') center/contain no-repeat;opacity:.92;pointer-events:none}
+.story-business-grid h3{font-size:21px;line-height:1.2;color:#ecd3a0;font-weight:600;margin:0 0 11px;max-width:235px}
+.story-business-grid>article:nth-child(2) h3{padding-right:30px}
+.story-business-grid p{font-size:15px!important;line-height:1.5!important;color:#d8c8ab!important;margin:0 0 18px!important;min-height:112px}
+.story-business-grid button{width:100%;margin-top:auto;padding:11px 12px;font-size:16px;line-height:1.25}
+.story-business-grid small{font-size:12px;line-height:1.4;margin-top:11px;color:#baa785;display:block}
+.story-worker-controls{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;padding-top:17px;margin-top:15px;border-top:1px solid #91724950}
+.story-worker-controls p{width:100%;font-size:14px!important;line-height:1.45!important;margin:0 0 2px!important;color:#c9b995!important}
+.story-worker-controls button{font-size:14px;padding:9px 13px}
+.story-future{font-size:12px!important;line-height:1.4!important;color:#a49377!important;margin:19px 8px 0!important}
+#unknownTrayItems{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;padding:21px 12px;margin:18px -6px 0;min-height:140px;background:repeating-linear-gradient(0deg,transparent 0 65px,#6d503026 66px 68px),linear-gradient(#4a3a27aa,#362a1fbb);border-radius:5px}
+#unknownTrayItems>p{grid-column:1/-1;align-self:center;margin:auto;font-size:16px;max-width:380px}
+#unknownTrayItems>.tray-item{position:relative;width:80px;height:84px;padding:6px;background:none;border:0;box-shadow:none;cursor:pointer}
+#unknownTrayItems>.tray-item img{width:100%;height:100%;object-fit:contain;filter:brightness(0) drop-shadow(0 4px 3px #0005);pointer-events:none}
+#unknownTrayItems>.tray-item .mystery-question{position:absolute;inset:0;display:grid;place-items:center;font-size:34px;font-style:normal;color:#fff;text-shadow:0 2px 3px #000}
+#unknownTrayItems>.tray-item:hover img{filter:brightness(0) drop-shadow(0 0 9px #f4d18299)}
+@media(prefers-reduced-motion:reduce){.story-mode #reception .shade,.story-mode #reception .shade::before,.story-mode #reception .shade::after,#dwarfStation .dwarf-progress i,#dwarfWorkStatus .worker-progress>i{transition:none}}
+
+/* The old dispatch corner becomes a staffed desk; it has a fixed position. */
+.story-mode #goblinStation{position:absolute;right:40px;bottom:91px;width:256px;min-height:99px;padding:13px 13px 11px 75px;text-align:left;color:#f0dfbd;background:linear-gradient(110deg,#2d352500,#263121ed 25%,#2b3024ee);border:0;border-bottom:3px solid #988056;border-radius:3px;box-shadow:0 8px 14px #150e0866;z-index:5}
+#goblinStation strong{display:block;font-size:21px;color:#d4dfa3}
+.goblin-portrait{position:absolute;left:-15px;bottom:0;width:92px;height:130px;object-fit:contain;object-position:center bottom;pointer-events:none;filter:drop-shadow(0 5px 4px #15160b88)}
+.goblin-label{display:block;font-size:12px;line-height:1.25;min-height:30px;margin:4px 0}
+.goblin-progress{display:block;height:3px;background:#182011;overflow:hidden}
+.goblin-progress i{display:block;height:100%;background:#c7d58a}
+.story-mode #goblinWorkStatus{position:absolute;left:710px;top:297px;width:375px;height:24px;z-index:6;display:flex;align-items:center;gap:8px;padding:2px 0;background:none;box-shadow:none;border:0;color:#d2d7ac;text-align:left;font-size:12px;font-weight:400}
+#goblinWorkStatus span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#goblinWorkStatus i{flex:0 1 45px;height:3px;max-width:45px;background:#c7d58a}
+.regular-contracts{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin:12px 0}
+.regular-contracts article{display:flex;flex-direction:column;gap:7px;padding:14px;background:#171b1244;border:1px solid #a38b585e;border-radius:5px}
+.regular-contracts h3{margin:0;font-size:20px;color:#edd3a2}
+.contract-recipe{display:grid;gap:4px}
+.contract-recipe span{display:flex;align-items:center;gap:10px;font-size:15px}
+.contract-recipe img{width:31px;height:31px;object-fit:contain}
+.contract-recipe b{font-weight:400}
+.regular-contracts p{font-size:14px;margin:3px 0}
+.regular-contracts button{font-size:14px;padding:8px 9px;min-height:35px}
+.regular-contracts small,.goblin-controls small{display:block;font-size:12px;color:#c5b38f;line-height:1.4}
+.goblin-controls{border-top:1px solid #92784d66;padding-top:10px}
+.goblin-controls h3{margin:0;font-size:21px;color:#d9dda4}
+.goblin-controls p{font-size:14px;margin:6px 0}
+.goblin-controls button{padding:9px 18px;font-size:15px;margin:5px}
+.story-mode .modal-card:has(.regular-contracts){width:840px;max-height:718px;overflow:auto;padding:24px 32px;background:radial-gradient(ellipse at 50% -30%,#606344,#2d291f 80%);border:1px solid #a88b59}
+.story-mode .modal-card:has(.regular-contracts) h2{font-size:29px;margin:8px 0}
+.story-mode .modal-card:has(.regular-contracts)>p{font-size:15px;line-height:1.4}
+.contract-lock{color:#e5ca92}
+.order-card.goblin-order .order-card-action{color:#556a32}
+.story-mode footer nav #contractsNav{font-size:14px;padding:10px}

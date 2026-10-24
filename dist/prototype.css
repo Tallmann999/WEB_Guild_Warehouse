@@ -143,7 +143,7 @@ footer nav{gap:6px}footer nav button{padding:10px;font-size:14px}
 .summary-grid small{display:block;margin-top:6px}
 .empty-pile{font-size:19px}
 .portrait-note{display:none}
-@media (orientation:portrait) and (max-width:700px){.portrait-note{position:fixed;top:15px;left:15px;right:15px;text-align:center;display:block;font:16px/1.5 Arial;color:#e8d4ac}}
+@media (orientation:portrait) and (max-width:700px) and (pointer:coarse){.portrait-note{position:fixed;top:15px;left:15px;right:15px;text-align:center;display:block;font:16px/1.5 Arial;color:#e8d4ac}}
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 @font-face{font-family:'Roboto Condensed';src:url('assets/fonts/RobotoCondensed-Variable.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
 html,body,body *,body *::before,body *::after{font-family:'Roboto Condensed',sans-serif!important}
