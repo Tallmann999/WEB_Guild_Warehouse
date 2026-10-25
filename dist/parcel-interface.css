@@ -1,0 +1,26 @@
+/* Shared letter controls: one transaction model for ordinary and series orders. */
+#orderBoard{width:240px;max-height:535px;overflow:auto;padding:4px 5px 12px;scrollbar-width:thin;scrollbar-color:#b59c66 #30251c}
+#orderBoard .order-card{cursor:pointer;grid-template-columns:1fr auto;gap:5px 6px;padding:10px 11px;min-height:120px;color:#392b1c;border:1px solid #a48752}
+#orderBoard .order-card strong{font-size:17px}
+#orderBoard .order-card>small{font-size:12px}
+.parcel-actions{display:grid;grid-column:1/-1;gap:5px;width:100%;margin-top:3px}
+.parcel-actions>*{grid-column:1/-1!important;grid-row:auto!important}
+.parcel-actions button{width:100%;min-height:32px;padding:6px 7px;font-size:13px;line-height:1.2;white-space:normal;color:#f4e4be}
+.parcel-actions button[data-parcel-action="manual"]{background:linear-gradient(#796043,#4b3928);border-color:#a98a56}
+.parcel-actions button[data-parcel-action="assistant"]{background:linear-gradient(#64804c,#3d5433);border-color:#95b472}
+.parcel-actions .parcel-claim{background:linear-gradient(#80b95d,#487b31);border-color:#c0ec9e;color:#fff9dd;font-size:16px;font-weight:700;min-height:37px}
+.parcel-worker-status{display:block;font-size:12px!important;line-height:1.2;color:#345128!important}
+#orderBoard .parcel-assistant-working{animation:parcelWorkGlow 1.7s ease-in-out infinite;border-color:#8dbe5b}
+#orderBoard .parcel-ready{border-color:#9bd96d;box-shadow:0 0 18px #78d64e88}
+@keyframes parcelWorkGlow{0%,100%{box-shadow:0 0 6px #68bb3e55}50%{box-shadow:0 0 22px #8ee26b99}}
+.parcel-receipt{position:absolute;padding:11px;overflow:hidden;color:#392b1c;background:linear-gradient(115deg,#f5e4b7,#d7bd85);border:1px solid #a2ce78;border-radius:3px;box-shadow:0 0 24px #83df5e88;pointer-events:none;z-index:300;font-size:15px}
+.parcel-receipt>span{display:flex;gap:4px}.parcel-receipt img{max-width:28px;max-height:28px}.parcel-receipt small{font-size:12px}.parcel-receipt .parcel-actions{display:grid}
+.parcel-completed-label{display:block;color:#2f6527;font-size:17px;margin-top:8px}
+#orderBoard.work-orders{right:24px;top:410px;width:220px;max-height:280px}
+#contractOfferBoard:not(.work-agreements){top:190px;max-height:410px;overflow:auto;scrollbar-width:thin;scrollbar-color:#a88b40 #524423}
+#game:not(.has-agreement-board) #orderBoard.work-orders{top:108px;max-height:550px}
+#game:has(#work.fulfillment:not(.hidden)) #contractOfferBoard{display:none}
+#game:has(#work:not(.hidden)) #orderBoard .order-card{transform:none}
+.regular-contracts .parcel-worker-status{color:#bed996!important}
+#checklist .parcel-worker-status{color:#345128!important}
+@media(prefers-reduced-motion:reduce){#orderBoard .parcel-assistant-working{animation:none}}

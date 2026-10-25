@@ -111,7 +111,8 @@ const Story = (()=>{
   }
   function showSecondDayEnd(){
     const s=state.story;if(!s?.secondDayEndPending)return false;
-    modal('<div id="finishSecondDay"><span class="brief-eyebrow">ВТОРОЙ РАБОЧИЙ ДЕНЬ ЗАВЕРШЁН</span><h2>'+s.secondDayPurchases+' поставок, '+s.secondDayDeliveries+' посылки</h2><p>Обновим лавку перед новым утром: стеллажи, уютный уголок у окна и вывеска гильдии.</p><button id="startThirdDay" class="primary">Обновить лавку и начать третий день</button></div>',{locked:true});
+    Restoration.presentMorning('furnish');
+    modal('<div id="finishSecondDay"><span class="brief-eyebrow">УТРО ТРЕТЬЕГО ДНЯ</span><h2>Обновим лавку перед открытием</h2><p>Вчера: '+s.secondDayPurchases+' поставок и '+s.secondDayDeliveries+' посылки. За 4 секунды появятся стеллажи, уютный уголок у окна и вывеска гильдии. Затем сразу продолжим утреннюю торговлю.</p><button id="startThirdDay" class="primary">Обновить лавку и начать третий день</button></div>',{locked:true});
     $('startThirdDay').onclick=()=>{
       if(Restoration.active()||state.day!==2||!s.secondDayEndPending)return;
       if(Restoration.readySecond()){forceCloseModal();Restoration.beginSecond();return;}
@@ -130,11 +131,11 @@ const Story = (()=>{
   function showGoblinEncounter(){
     const s=state.story;if(!s?.goblinEncounterPending||state.goblin?.hired)return false;
     state.screen='reception';state.mode='sort';render();
-    modal('<div id="goblinEncounter" class="staff-interview"><img class="staff-interview-portrait" src="assets/goblin-grik-packer.png" alt="Грик, гоблин-комплектовщик"><span class="brief-eyebrow">ГОСТЬ В ПОИСКАХ РАБОТЫ</span><h2>Грик</h2><p>Вы уже освоились с Борином. Я люблю аккуратно собирать и выдавать посылки. Найм стоит 240 монет. Какую посылку поручить мне — решаете вы.</p><div class="staff-interview-actions"><button id="acceptGoblin" class="primary" '+(state.gold<240?'disabled':'')+'>Взять на работу · 240 монет</button><button id="declineGoblin">Отказаться и отпустить Грика</button></div>'+(state.gold<240?'<p>Можно нанять Грика позже в улучшениях, когда накопите 240 монет.</p>':'')+'</div>',{locked:true});
+    modal('<div id="goblinEncounter" class="staff-interview"><img class="staff-interview-portrait" src="assets/goblin-grik-packer.png" alt="Грик, гоблин-комплектовщик"><span class="brief-eyebrow">ГОСТЬ В ПОИСКАХ РАБОТЫ</span><h2>Грик</h2><p>Вы уже освоились с Борином. Я люблю аккуратно собирать и выдавать посылки. Найм стоит 240 монет. Сразу возьму первую посылку, а на остальных листках вы сможете выбрать, кто собирает.</p><div class="staff-interview-actions"><button id="acceptGoblin" class="primary" '+(state.gold<240?'disabled':'')+'>Взять на работу · 240 монет</button><button id="declineGoblin">Отказаться и отпустить Грика</button></div>'+(state.gold<240?'<p>Можно нанять Грика позже в улучшениях, когда накопите 240 монет.</p>':'')+'</div>',{locked:true});
     $('acceptGoblin').onclick=()=>{
       if(!Goblin.canHire())return;
       forceCloseModal();if(!hireGoblin())return;
-      s.goblinEncounterChoice='hired';render();save();showBusiness();
+      s.goblinEncounterChoice='hired';render();save();
     };
     $('declineGoblin').onclick=()=>{
       s.goblinEncounterPending=false;s.goblinEncounterSeen=true;s.goblinEncounterChoice='declined';
@@ -145,7 +146,7 @@ const Story = (()=>{
   function hireGoblin(){
     if(!Goblin.hire())return false;
     state.story.goblinEncounterSeen=true;state.story.goblinEncounterPending=false;state.story.goblinEncounterChoice='hired';
-    render();save();toast('Грик нанят. В улучшениях включите его работу и поручите выбранную посылку.');return true;
+    render();save();toast('Грик нанят и уже берётся за первую посылку.');return true;
   }
   function createOrder(keepSelection=true){
     const s=ensure();if(!s||allOrders().length>=4||allOrders().some(o=>o.accepted===false))return false;
@@ -185,9 +186,11 @@ const Story = (()=>{
   }
   function makeSupply(){
     const s=state.story,index=s.supplyCount||0;
+    if(typeof Automation!=='undefined'&&Automation.resumeDeferredSupplier?.())return true;
     if(secondDay()&&(s.regularContracts?.chef?.signed?s.secondDayPurchases>=6:s.secondDayDeliveries>=2||s.secondDaySupplyRun>=3))return false;
-    const credit=state.gold<10&&!(s.supplierDebt>0);
-    if(state.gold<10&&!credit)return false;
+    const required=10+(typeof Automation!=='undefined'&&Automation.processingReserve?Automation.processingReserve():state.dwarf?.hired&&state.dwarf.enabled?2:0);
+    const credit=state.gold<required&&!(s.supplierDebt>0)&&(typeof Automation==='undefined'||!Automation.canUseSupplierCredit||Automation.canUseSupplierCredit());
+    if(state.gold<required&&!credit)return false;
     const lesson=!s.restored&&!s.firstDayComplete&&s.firstDayPurchases<2;
     const {types,theme,unknownBudget}=LootBalance.makeTypes({day:state.day,index,lesson});
     let unknownCount=0;
@@ -203,6 +206,7 @@ const Story = (()=>{
       if(createOrder()){if(state.tutorial?.active)state.tutorial.stage='guest';refreshArrivals();save();}return;
     }
     if(state.tutorial?.active||s.nextVisit>0)return;
+    if(typeof Automation!=='undefined'&&Automation.recoverBeforeSupplier?.()){refreshArrivals();save();return;}
     if(Contracts.activeOffer?.())return;
     if(Contracts.maybeOffer?.()){refreshArrivals();return;}
     if(secondDay()){
@@ -254,6 +258,7 @@ const Story = (()=>{
     dt=Math.max(0,Math.min(10,Number(dt)||0));if(!dt)return;
     const s=ensure();if(!s||!s.letterRead)return;
     if(Restoration.active()){Restoration.advance(dt);return;}
+    if(typeof RoyalProgress!=='undefined'&&RoyalProgress.advance())return;
     const sortingFinished=observeSorting();
     s.elapsed+=dt;if(!sortingFinished)s.nextVisit=Math.max(0,s.nextVisit-dt);
     // The first day follows two trades, without a waiting timer. Later days use
@@ -309,9 +314,9 @@ const Story = (()=>{
     if(!state.dwarf?.hired)return ['ПЕРВЫЙ ПОМОЩНИК',Dwarf.unlocked()?'Нанять Борина за 120 монет':'Второй день · три поставки на посылку',Dwarf.unlocked()?'Борин ждёт решения в улучшениях. После найма он сразу начнёт разбирать поставки.':'После трёх разобранных мешков и первой выданной посылки придёт гном-сортировщик.'];
     if(!state.dwarf.enabled)return ['ПЕРВЫЙ ПОМОЩНИК','Включить автосортировку Борина','Откройте улучшения и поручите Борину разбор настоящей поставки.'];
     if(!s.completedB2)return ['РАБОТА ВДВОЁМ','Собрать посылку, пока работает Борин','Купите новую партию, а сами выполните ещё один заказ.'];
-    if(!state.goblin?.hired)return ['НОВЫЙ ПОМОЩНИК',state.day>=3?'Нанять Грика за 240 монет':'Сначала поработать вместе с Борином',state.day>=3?state.gold<240?'Продолжайте обычную торговлю и накопите 240 монет. Грик сможет собирать выбранную посылку.':'Грик предложит работу у свободной стойки. После найма включите его и выберите посылку в улучшениях.':'Грик придёт с третьего дня, когда вы освоите работу вдвоём с Борином.'];
+    if(!state.goblin?.hired)return ['НОВЫЙ ПОМОЩНИК',state.day>=3?'Нанять Грика за 240 монет':'Сначала поработать вместе с Борином',state.day>=3?state.gold<240?'Продолжайте обычную торговлю и накопите 240 монет. Грик сможет собирать выбранную посылку.':'Грик предложит работу у свободной стойки. После найма Грик сразу возьмёт первую посылку.':'Грик придёт с третьего дня, когда вы освоите работу вдвоём с Борином.'];
     if(!state.goblin.enabled)return ['НОВЫЙ ПОМОЩНИК','Включить работу Грика','В улучшениях включите Грика и явно поручите ему выбранную посылку. Остальные посылки остаются за вами.'];
-    if(!s.completedB3)return ['НОВЫЙ ПОМОЩНИК','Передать обычную посылку Грику','В улучшениях поручите Грику одну принятую посылку. Он соберёт и выдаст товар, пока вы заняты другим заказом.'];
+    if(!s.completedB3)return ['НОВЫЙ ПОМОЩНИК','Передать обычную посылку Грику','Грик собирает первую посылку. На листке можно выбрать помощника или собрать самому, затем забрать оплату.'];
     if(!s.guild?.founded||s.guild.phase==='charter')return ['НАЧАЛО ГИЛЬДИИ','Основать свою гильдию','Выберите название, получите флаг и включите автоторговлю в окне гильдии.'];
     if(!Automation.enabled())return ['ЛАВКА И ГИЛЬДИЯ','Возобновить автоторговлю','Откройте окно гильдии, чтобы включить покупку мешков и выдачу обычных посылок.'];
     if(!state.city?.towerOwned)return ['СТАРАЯ БАШНЯ',City.towerAvailable()?'Купить башню · 1000 монет':'Накопить на старую башню','Лавка торгует сама. Покупка башни на карте города откроет договорённости с другими постоянными клиентами.'];
@@ -322,14 +327,14 @@ const Story = (()=>{
     Contracts.setup();Restoration.setup();
     const goal=document.createElement('aside');goal.id='storyObjective';goal.className='hidden';goal.innerHTML='<span></span><strong></strong><small></small>';$('game').append(goal);
     const action=button($('reception'),'Улучшить лавку',showBusiness,'storyAction');action.className='primary hidden';
-    const dwarf=button($('reception'),'',showBusiness,'dwarfStation');dwarf.className='hidden';dwarf.innerHTML='<img src="assets/dwarf-borin-redhat.png" alt="Борин, гном-сортировщик"><span class="dwarf-name">Борин</span><span class="dwarf-status"></span><span class="dwarf-progress"><i></i></span>';dwarf.querySelector('img').onerror=e=>{e.currentTarget.src='assets/s3_2.png';e.currentTarget.onerror=null;};
+    const dwarf=button($('reception'),'',()=>setScreen('work','sort'),'dwarfStation');dwarf.className='hidden';dwarf.innerHTML='<img src="assets/dwarf-borin-redhat.png" alt="Борин, гном-сортировщик"><span class="dwarf-name">Борин</span><span class="dwarf-status"></span><span class="dwarf-progress"><i></i></span>';dwarf.querySelector('img').onerror=e=>{e.currentTarget.src='assets/s3_2.png';e.currentTarget.onerror=null;};
     const tray=button(document.querySelector('.work-heading'),'Поднос неизвестного · 0',openTray,'unknownTrayButton');tray.className='hidden';
-    const workStatus=button($('work'),'',showBusiness,'dwarfWorkStatus');workStatus.className='hidden';workStatus.innerHTML='<span class="worker-label"></span><span class="worker-progress"><i></i></span>';
+    const workStatus=button($('work'),'',()=>setScreen('work','sort'),'dwarfWorkStatus');workStatus.className='hidden';workStatus.innerHTML='<span class="worker-label"></span><span class="worker-progress"><i></i></span>';
     $('help').onclick=()=>{if(!enabled()){help();return;}if(state.paused)return;modal('<h2>Как вернуть лавку к жизни</h2><div class="rules"><b>Начало торговли.</b> Купите первый мешок за 10 монет, разложите находки и выполните заказ повара.<br><b>Торговля.</b> Принимайте поручения у стойки. Листки справа сразу открывают сборку. Каждый компонент — отдельная вещь в вашем запасе.<br><b>Преображение.</b> После первого дня уберите пыль и паутину и почините окно за 30 монет. После второго дня появятся стеллажи, уютный уголок и вывеска гильдии.<br><b>Второй день.</b> Три поставки на одну посылку: всего шесть поставок и две посылки. После первой выдачи придёт Борин. Найм — 120 монет; после оплаты Борин сразу начинает сортировку. Он разбирает партии параллельно с вашей сборкой.<br><b>Работа Борина.</b> Известное — в коробки, неизвестное — на поднос. За партию 2 монеты один раз. После основания гильдии можно включить автоторговлю. В рабочем уголке гнома можно приостановить.<br><b>Изучение.</b> Нажмите неизвестную находку на подносе и очистите её. Предмет перейдёт в подходящую коробку.<br><b>Продолжение.</b> На паузе мир останавливается. Игра сохраняется в этом браузере. После первой главы можно продолжать торговлю.</div>');};
   }
   function update(){
     const active=enabled()&&state.started;$('game').classList.toggle('story-mode',active);if(!$('storyObjective'))return;
-    hidden('storyObjective',!active);hidden('storyAction',!active||state.screen!=='reception'||!state.story?.restored);hidden('dwarfStation',!active||!state.dwarf?.hired||state.screen!=='reception');hidden('unknownTrayButton',!active||!state.dwarf?.hired);hidden('dwarfWorkStatus',!active||!state.dwarf?.hired);
+    hidden('storyObjective',!active||!!state.story?.completedB3&&!state.story?.guild?.founded);hidden('storyAction',!active||state.screen!=='reception'||!state.story?.restored);hidden('dwarfStation',!active||!state.dwarf?.hired||state.screen!=='reception');hidden('unknownTrayButton',!active||!state.dwarf?.hired);hidden('dwarfWorkStatus',!active||!state.dwarf?.hired);
     Contracts.update();if(!active)return;ensure();
     $('game').dataset.shop=state.story.restored?'restored':'neglected';$('game').dataset.dwarf=state.dwarf?.hired?'hired':'none';
     const goal=objective();['span','strong','small'].forEach((tag,i)=>{const el=$('storyObjective').querySelector(tag);if(el.textContent!==goal[i])el.textContent=goal[i];});
@@ -383,16 +388,16 @@ const Story = (()=>{
   function goblinBusiness(){
     if(!state.dwarf?.hired||!state.story.completedB2&&!state.goblin?.hired)return '';
     const g=Goblin.ensure(),status=Goblin.status(),contracts=Contracts.ensure();
-    const signed=Object.entries(contracts).filter(([,c])=>c.signed);
+    const signed=Object.entries(contracts).filter(([key,c])=>c.signed&&(!c.completed||Contracts.current(key)));
     const policies=g.hired?'<div class="staff-contract-policies">'+(signed.length?signed.map(([key,c])=>{
-      const order=(state.orders||[]).find(o=>o.regularKey===key),name=key==='chef'?'Городская кухня':'Мастерская алхимика';
+      const order=(state.orders||[]).find(o=>o.regularKey===key),name=key==='chef'?'Городская кухня':key==='royal'?'Королевская оружейная':'Мастерская алхимика';
       return '<article><div><strong>'+name+'</strong><small>'+(c.delegated?'Текущую и следующие собирает Грик':'Текущую и следующие собираете вы')+'</small></div><button data-upgrade-delegate="'+key+'">'+(c.delegated?'Вернуть мне · следующие тоже':'Поручить Грику · повторять')+'</button>'+(order?'<button data-upgrade-manual="'+order.id+'" '+(Goblin.isAssigned(order)?'disabled':'')+'>Собрать вручную</button>':'')+'</article>';
     }).join(''):'<p>Постоянные договорённости появятся после покупки башни.</p>')+'</div>':'';
     const parcels=g.hired?'<div class="staff-contract-policies">'+(allOrders().filter(o=>!o.regularKey&&o.accepted!==false).map(o=>'<article><div><strong>'+(o.title||'Обычная посылка')+' · №'+o.id+'</strong><small>'+o.packed.length+'/'+o.recipe.reduce((n,r)=>n+r.count,0)+' · '+o.reward+' монет · '+(Goblin.isAssigned(o)?'Собирает Грик':'Собираете вы')+'</small></div><button data-upgrade-parcel="'+o.id+'">'+(Goblin.isAssigned(o)?'Вернуть эту посылку мне':'Поручить эту посылку Грику')+'</button></article>').join('')||'<p>Примите обычное поручение у стойки, затем выберите посылку для Грика здесь.</p>')+'</div>':'';
     return '<section id="goblinUpgrades" class="staff-goblin-controls"><img class="staff-upgrade-portrait" src="assets/goblin-grik-packer.png" alt="Грик"><div class="staff-upgrade-heading"><span class="brief-eyebrow">СБОРКА И ВЫДАЧА</span><h3>Грик, гоблин-комплектовщик</h3><p>'+status.label+'</p></div>'+(g.hired?'<button id="toggleGoblinUpgrades" class="primary">'+(g.enabled?'Приостановить Грика':'Включить работу Грика')+'</button>':'<button id="hireGoblinUpgrades" class="primary" '+(!Goblin.canHire()?'disabled':'')+'>Нанять Грика · 240 монет</button>')+'<p class="staff-policy-note">Выберите отдельную посылку для Грика. После запуска автоторговли он также принимает новые обычные поручения; ранее принятые ручные посылки остаются за вами. Комиссия 3 монеты списывается один раз при выдаче.</p>'+parcels+policies+'</section>';
   }
   function bindGoblinBusiness(){
-    if($('hireGoblinUpgrades'))$('hireGoblinUpgrades').onclick=()=>{closeModal();hireGoblin();showBusiness();};
+    if($('hireGoblinUpgrades'))$('hireGoblinUpgrades').onclick=()=>{closeModal();hireGoblin();};
     if($('toggleGoblinUpgrades'))$('toggleGoblinUpgrades').onclick=()=>{Goblin.setEnabled(!state.goblin.enabled);closeModal();render();save();};
     document.querySelectorAll('[data-upgrade-parcel]').forEach(b=>b.onclick=()=>{
       const order=allOrders().find(o=>o.id===Number(b.dataset.upgradeParcel));
@@ -421,14 +426,14 @@ const Story = (()=>{
   }
   function checkCompletion(){
     const s=state.story,d=state.dwarf;if(!s||!d?.hired)return;
-    if(!s.completedB3&&(state.goblin?.deliveries||0)>0){s.completedB3=true;s.completedB3At=s.elapsed;save();toast('Грик выдал настоящую посылку. Лавка теперь работает вместе с вами.');}
+    if(!s.completedB3&&(state.goblin?.deliveries||0)>0){s.completedB3=true;s.completedB3At=s.elapsed;save();}
     if(s.completedB2)return;
     if((d.completedBatches||0)>0&&state.totalOrders>(s.hireOrders??state.totalOrders)){
       s.completedB2=true;s.completedAt=s.elapsed;save();
       toast('Лавка работает вдвоём: Борин разобрал поставку, а вы выдали посылку. Первая глава пройдена!');
     }
   }
-  function afterLoad(){if(!enabled())return;ensure();Dwarf.ensure();Goblin.ensure();Goblin.reconcile();state.ended=false;render();if(!state.story.letterRead)letter();else{Restoration.afterLoad();if(!secondDayMilestones())goblinMilestones();}if(typeof Automation!=='undefined')Automation.afterLoad();if(typeof Guild!=='undefined')Guild.afterLoad();}
+  function afterLoad(){if(!enabled())return;ensure();Dwarf.ensure();Goblin.ensure();Goblin.reconcile();state.ended=false;render();if(!state.story.letterRead)letter();else{Restoration.afterLoad();if(!secondDayMilestones())goblinMilestones();}if(typeof Automation!=='undefined')Automation.afterLoad();if(typeof Guild!=='undefined')Guild.afterLoad();if(typeof Tower!=='undefined')Tower.afterLoad();if(typeof RoyalProgress!=='undefined')RoyalProgress.afterLoad();}
   function guide(){
     if(typeof BagPour!=='undefined'&&BagPour.active()){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}
     const t=state.tutorial;if(!enabled()||!t?.active||!state.started){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}

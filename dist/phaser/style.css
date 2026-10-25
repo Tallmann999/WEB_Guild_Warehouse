@@ -1,0 +1,36 @@
+/* Phaser owns world pixels; DOM keeps semantic controls, text and forms. */
+#phaser-world{position:absolute;inset:0;z-index:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+#phaser-world canvas{display:block;width:100%!important;height:100%!important;pointer-events:none}
+.phaser-ready #startScreen,.phaser-ready #reception,.phaser-ready #work{background:transparent!important}
+.phaser-ready #reception::before,.phaser-ready #reception::after,.phaser-ready #reception .counter,.phaser-ready #reception .counter::before,.phaser-ready #reception .counter::after{background:none!important}
+.phaser-ready #reception .shade{background:none!important}
+.phaser-ready #work #table{background:transparent!important}
+.phaser-ready #inspector,.phaser-ready #sourceBox.source-open,.phaser-ready #targetPreview,.phaser-ready #parcelDrop{background:transparent!important;box-shadow:none!important}
+.phaser-ready .city-map-art{opacity:0!important}
+.phaser-ready .city-landscape{background:transparent!important}
+.phaser-ready #cityMap{background:transparent!important}
+.phaser-ready.viewing-city #reception,.phaser-ready.viewing-city #work{visibility:hidden!important}
+.phaser-ready img[data-phaser-art]{opacity:0!important;animation:none!important;transition:none!important}
+.phaser-ready #reception #bag::before{display:none}
+.phaser-ready #work:has(#inspector:not(.hidden)) #pile .empty-pile,.phaser-ready #work:has(#inspector:not(.hidden)) #pile .mystery-question{visibility:hidden}
+.phaser-ready #inspector .inspection-heading{background:#251b11cc}
+.phaser-ready #inspector .inspection-heading h2{color:#f1d39b}
+.phaser-ready #work:has(#inspector:not(.hidden)) #pile{visibility:hidden!important}
+.phaser-ready #towerInterior{background:transparent!important}
+.phaser-ready #towerArt{opacity:0!important}
+.phaser-ready.viewing-tower #reception,.phaser-ready.viewing-tower #work{visibility:hidden!important}
+.phaser-ready .item.chosen{animation:none!important;filter:none!important;outline:none!important;background:none!important;box-shadow:none!important}
+.phaser-ready .item:hover,.phaser-ready .item:focus-visible{filter:none!important;outline:none!important;background:none!important;box-shadow:none!important}
+/* Generic button ::after light lives above the canvas even at z-index:-1.
+   Native world targets already receive a lower Phaser glow; keep one aura. */
+.phaser-ready :is(.item,.shelf-box,#bag,#parcel,#dwarfStation,#goblinStation)::after{content:none!important;display:none!important;animation:none!important;opacity:0!important}
+/* The world canvas is below DOM table borders and accessible controls. These
+   saved-clock actors form an explicit foreground above the whole workbench. */
+.phaser-ready #bagPourScene,.phaser-ready #dwarfCarrier,.phaser-ready #dwarfPickupSpot{z-index:100;pointer-events:none}
+.phaser-ready #bagPourScene img,.phaser-ready #dwarfCarrier img,.phaser-ready #dwarfPickupSpot img{opacity:1!important}
+.phaser-ready #work:has(#dwarfCarrier:not(.hidden)) #inspector .inspection-heading{background:transparent}
+.phaser-ready #work:has(#dwarfCarrier:not(.hidden)) #inspector .inspection-heading h2{color:#432b18;text-shadow:0 1px #ecd3a2}
+/* Grik shares Borin's scale and foreground footing. His portrait sits to the
+   right of the status text, clear of both the sack and the label background. */
+.story-mode #goblinStation{right:37px;bottom:101px;width:291px;min-height:98px;padding:13px 137px 12px 12px;border:0;border-radius:0;box-shadow:none;background:linear-gradient(260deg,#3e302200 28%,#263121ed 48%,#263121ed 95%,#26312100)}
+#goblinStation .goblin-portrait{left:auto;right:-1px;bottom:0;width:143px;height:186px;object-fit:contain;object-position:center bottom}

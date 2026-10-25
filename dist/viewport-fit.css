@@ -1,0 +1,105 @@
+/* One bounded logical frame, uniformly scaled to the actual browser viewport.
+   Layout fits inside the frame; outer scrolling never hides primary actions. */
+html,body{width:100%;height:100%;min-height:0;max-height:100%;overflow:hidden!important;overscroll-behavior:none}
+#viewport{position:fixed;inset:0;display:block;width:100%;height:100%;min-height:0;overflow:clip}
+#game{position:absolute;min-width:0;max-width:none;min-height:0;max-height:none;border:0;left:0;top:0;transform:scale(var(--game-scale,1))!important;transform-origin:0 0;overflow:hidden}
+#game>header{height:74px;min-height:74px;max-height:74px;flex-wrap:nowrap;gap:16px;padding:7px 22px}
+#game>header #goldWallet{flex:0 0 auto;min-width:165px;margin:0;gap:9px}#game>header #gold{font-size:61px!important;line-height:1}#game>header #walletIcon{width:42px;height:42px}
+#game>header .day{order:0;display:grid;flex:1;min-width:150px;max-width:300px;margin:auto;padding:5px 12px;gap:3px}
+#game>header .day b{font-size:17px}#game>header #clock{font-size:15px}#game>header .rep{display:grid;min-width:100px}
+#game>header #sound{margin-left:auto}#game>header .icon{width:37px;height:37px;padding:6px;flex:0 0 37px}
+#game>header #ordersNav,#game>header #cityNav{font-size:14px;padding:8px 11px;min-width:0;min-height:37px;white-space:nowrap;margin:0}
+#game>footer{height:54px;min-height:54px;max-height:54px;padding:7px 20px;flex-wrap:nowrap;gap:12px}
+#game>footer nav{width:auto;justify-content:flex-end;flex-wrap:nowrap;gap:6px;margin-left:auto}
+#game>footer nav button{font-size:13px;padding:8px 10px;min-height:34px;white-space:nowrap}
+#game>footer #stepHint{display:block;min-width:0;max-width:420px;flex:1;font-size:12px;line-height:1.2}
+#taskRail{left:auto;right:8px;top:calc(var(--hud-height,74px) + 8px);bottom:calc(var(--footer-height,54px) + 8px);width:calc(var(--task-width,300px) - 16px);padding:30px 8px;gap:0;max-height:none;min-height:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid #9c7c4977;border-radius:6px;background:#251f18c9}
+#game:has(#reception:not(.hidden)) #taskRail{bottom:calc(var(--footer-height,54px) + var(--worker-height,160px) + 30px)}
+.task-rail-heading{display:none}
+.task-letters{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;align-items:stretch;gap:10px;overflow:hidden;scrollbar-width:none}
+#taskRail .order-card,#taskRail .contract-offer-leaf{flex:0 0 auto;width:100%;min-width:0;min-height:0;max-height:220px!important;padding:8px 10px!important;gap:2px!important;overflow:hidden!important}
+#taskRail .order-card>*,#taskRail .contract-offer-leaf>*{flex-shrink:0}
+#taskRail .quest-eyebrow,#taskRail .agreement-leaf-kind{font-size:8px;line-height:1.1;letter-spacing:.8px}
+#taskRail h3{font-size:15px;line-height:18px;min-height:18px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#taskRail .quest-recipient{font-size:12px;line-height:1.2;margin:0}#taskRail .quest-recipient small{display:none}
+#taskRail .parcel-recipe{gap:1px}#taskRail .parcel-recipe li{padding:0;gap:5px;min-height:20px}
+#taskRail .parcel-recipe img{width:20px!important;height:20px!important;flex-basis:20px}#taskRail .parcel-recipe li>span{font-size:12px;line-height:1.1}#taskRail .parcel-recipe li>b{font-size:12px}
+#taskRail .contract-recipe{display:grid;gap:1px}
+#taskRail .contract-recipe span{display:flex;align-items:center;gap:5px;min-height:22px;border-bottom:1px dashed #a4855655}
+#taskRail .contract-recipe img{width:20px;height:20px;object-fit:contain;flex:0 0 20px}#taskRail .contract-recipe b{font-size:12px;line-height:1.1}
+#taskRail .agreement-leaf-info{font-size:10px;line-height:1.1}
+#taskRail .order-card .quest-price,#taskRail .contract-offer-leaf>.quest-price{margin:2px 0 0;font-size:14px;line-height:20px;min-height:20px}
+#taskRail .parcel-actions,#taskRail .contract-offer-leaf .parcel-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:3px}
+#taskRail .agreement-wait-actions{grid-template-columns:1fr 1fr}
+#taskRail .parcel-actions button,#taskRail .contract-offer-leaf button{min-height:28px;padding:4px 5px!important;font-size:11px;line-height:1.05}
+#taskRail .parcel-worker-status{font-size:10px!important;line-height:1.1}
+#taskRail .agreement-deliveries{position:absolute;top:7px;right:9px;gap:4px;margin:0}#taskRail .agreement-delivery{width:13px;height:13px;flex-basis:13px;font-size:12px}
+#taskRail .contract-offer-leaf .quest-eyebrow{padding-right:55px}
+#taskRail .contract-offer-leaf[data-order-id] .quest-eyebrow,#taskRail .contract-offer-leaf[data-order-id] .agreement-leaf-info,#taskRail .contract-offer-leaf .agreement-leaf-compact{display:none}
+#taskRail #contractOfferBoard.work-agreements .agreement-leaf-kind{display:block}
+#taskRail #taskPrev,#taskRail #taskNext{position:absolute;left:50%;right:auto;transform:translateX(-50%);width:70px;height:24px;padding:0;min-height:0;font-size:25px;line-height:20px}
+#taskRail #taskPrev{top:3px;bottom:auto}#taskRail #taskNext{top:auto;bottom:3px}#taskPageStatus{position:absolute;right:8px;bottom:8px;font-size:9px;color:#d2bc8d;pointer-events:none}
+#taskRail:not(.has-pages) #taskPrev,#taskRail:not(.has-pages) #taskNext{visibility:hidden}
+#game>#work{right:var(--task-width,300px)}
+#work .work-heading{height:48px;min-height:48px;max-height:48px;flex-wrap:nowrap;padding:7px 24px;gap:10px}
+#work .work-heading>div:not(#workProgress){min-width:200px;flex:1;max-width:none}#work .work-heading h1{font-size:18px;margin:2px 0}
+#work .work-heading #workProgress{font-size:13px;margin-left:auto;max-width:130px}#work .work-heading #autoSortButton{min-width:135px;font-size:13px}
+#work #unknownTrayButton{width:170px;font-size:12px;padding:7px 10px}
+#work #shelves{position:absolute;top:54px;left:24px;right:24px;margin:0;height:268px;grid-template-rows:128px 128px;gap:12px}
+#work .shelf-row,#work .upper-shelf,#work .lower-shelf{display:grid;grid-template-columns:repeat(6,144px);grid-template-rows:128px;gap:10px;justify-content:center;align-items:end}
+#work .shelf-row .shelf-box{height:128px;width:144px;min-height:0}#work .shelf-row .shelf-box img.boxart{width:144px;height:104px;bottom:20px}
+#work .shelf-row .shelf-box .tag{font-size:12px;min-height:19px;line-height:1.1;white-space:nowrap;bottom:0;padding:1px}
+#work .shelf-placeholder{display:block!important}
+#work #dwarfWorkStatus,#work #goblinWorkStatus{top:325px;height:18px;font-size:11px;max-width:44%;left:28px}
+#work #goblinWorkStatus{left:auto;right:28px}
+#work #table,#work.fulfillment #table{position:absolute;left:50%;right:auto;top:auto;bottom:24px;transform:translateX(-50%);width:calc((var(--frame-width,1280px) - 56px)*.7);height:calc((100% - 244px)*.7);min-height:306px;max-height:calc(100% - 344px);margin:0;padding:0;border-width:9px}
+#work.fulfillment #table{display:grid;grid-template-columns:180px minmax(210px,1fr) 270px;gap:10px;padding:8px;align-items:stretch}
+#work.fulfillment #boxZone,#work.fulfillment #sourceBox{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:100%;height:100%;min-width:0;min-height:0;grid-row:1;grid-column:auto}
+#work.fulfillment #parcelDrop{width:100%;height:100%;min-height:0}
+#work.fulfillment #checklist{grid-column:3;grid-row:1;align-self:start;max-height:none!important;min-height:0;height:auto;padding:10px!important;gap:3px;font-size:13px}
+#work #checklist h3{font-size:16px;line-height:1.1;margin:0}
+#work #checklist .quest-eyebrow{font-size:8px}#work #checklist .quest-recipient{font-size:13px;line-height:1.15;margin:0 0 2px}
+#work #checklist .quest-recipient small{font-size:11px}#work #checklist .check-row{display:flex;width:100%;min-height:31px;gap:6px}
+#work #checklist .check-row img{width:29px;height:29px}#work #checklist .check-name{font-size:13px;line-height:1.1}#work #checklist .check-row b{font-size:13px}
+#work #checklist .dispatch-status{font-size:13px;margin:4px 0;min-height:0}#work #checklist .dispatch-status strong{font-size:15px}
+#work #checklist .note-actions{display:grid;margin-top:2px}#work #checklist .note-actions>*{flex:none}#work #checklist button{min-height:30px;padding:6px!important;font-size:13px}
+#work #checklist .parcel-actions{grid-template-columns:1fr 1fr;gap:5px;margin-top:2px}
+#work #inspector{top:340px;width:520px;max-width:none;height:calc(100% - 365px);max-height:430px;left:50%;transform:translateX(-50%)}
+#work #inspector.junk-open{left:28px;transform:none;width:45%}
+#work #targetPreview{top:340px;left:auto;right:28px;width:45%;max-width:none;height:calc(100% - 365px);max-height:430px}
+#work .work-hint{bottom:3px;left:24px;right:24px;font-size:12px;line-height:1.15}
+.story-mode #storyObjective{left:20px;top:calc(var(--hud-height,74px) + var(--tasks-height,0px) + 10px);width:280px;max-height:58px;overflow:hidden;gap:2px}
+.story-mode #storyObjective>span{font-size:9px}.story-mode #storyObjective>strong{font-size:17px;line-height:1.12}.story-mode #storyObjective>small{font-size:11px;line-height:1.1}
+.story-mode:has(#work:not(.hidden)) #storyObjective{display:none}
+.story-mode #storyAction{left:20px;top:76px;width:280px;min-height:30px;padding:6px 10px;font-size:13px}
+.story-mode #speech{left:20px;right:auto;top:116px;width:280px;max-width:none;min-height:0;padding:12px 15px}
+.story-mode #speech .eyebrow{font-size:9px}.story-mode #speech h2{font-size:22px;margin:5px 0 7px}.story-mode #speech p{font-size:14px;line-height:1.25}
+#reception #visitor{left:42%;right:auto;bottom:-35px;width:calc(var(--scene-height,600px)*.72);height:calc(var(--scene-height,600px)*.95);max-width:500px;max-height:610px;transform:translateX(-50%)}
+#reception .bag,#reception .parcel{left:auto;right:20%;bottom:74px;width:140px;height:166px}
+#receptionAction,#receptionAction.contract-counter-actions{left:50%;right:auto;bottom:12px;transform:translateX(-50%);width:350px;gap:6px}
+#receptionAction button,#receptionAction.contract-counter-actions button{min-height:34px;padding:8px 14px;font-size:15px;line-height:1.1}
+.story-mode #dwarfStation,.story-mode #goblinStation{left:20px;right:auto;bottom:15px;width:280px;height:78px;min-height:78px;padding:7px 10px 7px 132px;z-index:8}
+.story-mode #goblinStation{left:auto;right:20px;padding:7px 132px 7px 10px}
+#dwarfStation>img,#goblinStation>.goblin-portrait{left:0;right:auto;bottom:0;width:calc(var(--worker-height,150px)*.77);height:var(--worker-height,150px)}
+#goblinStation>.goblin-portrait{left:auto;right:0}
+#dwarfStation .dwarf-name,#goblinStation>strong{font-size:18px;margin:0}#dwarfStation .dwarf-status,#goblinStation .goblin-label{font-size:11px!important;line-height:1.15;min-height:24px!important}
+#dwarfStation .dwarf-progress,#goblinStation .goblin-progress{margin-top:5px}
+#dwarfStation::before{left:126px;right:0;top:0}#goblinStation::before{left:0;right:126px;top:0}
+#restartTutorial{display:none}
+#game .modal{position:absolute;inset:0;padding:14px;overflow:hidden;align-items:center;justify-items:center}
+#game .modal .modal-card,#game .modal .modal-card.wide,#game.story-mode .modal-card:has(.regular-contracts),#game .modal.order-brief .modal-card{width:min(1040px,calc(100% - 28px));max-width:1040px;height:auto;max-height:calc(100% - 28px)!important;min-height:0;overflow:hidden!important;display:flex;flex-direction:column;padding:26px 32px}
+#game .modal.order-brief .modal-card{width:620px}
+#modalContent{min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;padding:0 1px;max-height:100%}
+#closeModal{z-index:5;flex:none}
+#game .modal-card:has(#inheritanceLetter),#game .modal-card:has(#guildFounding),#game .modal-card:has(#guildCharter){width:680px;padding:26px 36px}
+#game .modal-card:has(#restorationOffer){width:760px}
+.guild-charter-work{grid-template-columns:repeat(3,1fr)}
+#cityShopEntry{top:min(calc(83% + 47px),calc(100% - 43px))}
+#cityMap .city-place-card[data-site="tower"]{left:38%;top:14px;width:370px;padding:14px 18px}
+#cityMap .city-heading{height:70px;display:flex;padding:10px 22px;gap:20px}
+#cityMap .city-heading>div{flex:0 0 250px}#cityMap .city-heading p{font-size:12px;max-height:40px}
+#cityMap .city-landscape{top:70px}
+#cityMap .city-site{width:185px;min-height:70px;font-size:16px}#cityMap .city-site[data-site="shop"]{left:18%!important}#cityMap .city-site[data-site="smith"]{left:75%!important}
+#cityMap .city-shop-entry{left:18%}#cityMap .city-tower-entry{font-size:16px;min-width:125px}
+.guild-city-caption{left:50%;top:48px;transform:translateX(-50%);width:590px;padding:20px 25px}
+.tower-heading{min-height:70px;padding:10px 22px}.tower-visit-caption{left:20px;right:20px;bottom:15px;flex-wrap:nowrap;gap:20px}.tower-visit-caption p{min-width:0;flex:1}.tower-visit-caption button{margin:0}

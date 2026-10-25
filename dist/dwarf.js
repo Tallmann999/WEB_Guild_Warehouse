@@ -161,7 +161,7 @@ const Dwarf = (()=>{
   function updateVisual(){
     const work=document.getElementById('work');if(!work)return;
     const d=ensure(),x=d?.job&&state.bag.find(x=>x.uid===d.job.uid);
-    if(!state.started||!d?.hired||!d.enabled||!x||busy(x)||state.screen!=='work'||state.mode!=='sort'||state.inspectCat!==null||typeof City!=='undefined'&&City.isOpen()||BagPour.active()){clearVisual();return;}
+    if(!state.started||!d?.hired||!d.enabled||!x||busy(x)||state.screen!=='work'||state.mode!=='sort'||typeof City!=='undefined'&&City.isOpen()||BagPour.active()){clearVisual();return;}
     let carrier=document.getElementById('dwarfCarrier'),spot=document.getElementById('dwarfPickupSpot');
     if(!carrier){
       carrier=document.createElement('div');carrier.id='dwarfCarrier';carrier.setAttribute('aria-hidden','true');

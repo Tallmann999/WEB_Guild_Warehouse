@@ -1,0 +1,143 @@
+/* The viewport controls layout. Sheets grow with their content; only physical
+   inventory panes scroll. Phaser uses the very same measured world geometry. */
+html,body{width:100%;min-height:100%;overflow-x:hidden;overflow-y:auto}
+body{margin:0}
+#viewport{display:block;width:100%;height:auto;min-height:100dvh}
+#game{position:relative;left:auto;top:auto;min-width:280px;max-width:100%;transform:none!important;transform-origin:top left;margin:0;box-shadow:none}
+#game>header{height:auto;min-height:77px;gap:clamp(8px,1.5vw,25px);padding:9px clamp(10px,2vw,28px)}
+#game>header .day{flex:1;min-width:110px;max-width:280px;margin:auto}
+#game>header .rep{min-width:100px}
+#game>footer{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding:12px clamp(10px,2vw,26px)}
+#game>footer nav{display:flex;flex-wrap:wrap;gap:7px;margin-left:auto}
+#game>footer #stepHint{flex:1;min-width:150px;max-width:500px}
+#game>.scene{top:calc(var(--hud-height,77px) + var(--tasks-height,0px));bottom:var(--footer-height,70px)}
+.portrait-note{display:none!important}
+#taskRail{position:absolute;z-index:24;left:0;right:0;top:var(--hud-height,77px);padding:10px clamp(10px,2vw,26px) 13px;background:linear-gradient(#332b20f2,#251f18ed);border-bottom:1px solid #9c7c49;display:grid;gap:9px}
+.task-rail-heading{display:flex;align-items:center;justify-content:space-between}
+.task-rail-heading #ordersNav{font-size:14px;min-height:35px;padding:7px 12px}
+.task-letters{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(258px,100%),1fr));align-items:start;gap:12px}
+#taskRail #orderBoard:not(.hidden),#taskRail #contractOfferBoard:not(.hidden){display:contents!important;position:static!important;width:auto!important;max-height:none!important;height:auto!important;padding:0!important;overflow:visible!important}
+#taskRail #contractOfferBoard::before{display:none}
+#taskRail .order-card,#taskRail .contract-offer-leaf,.quest-sheet,.regular-contracts article,#checklist,#contractOfferSheet{
+  position:relative;display:flex;flex-direction:column;align-items:stretch;gap:7px;min-width:0;width:100%;height:auto!important;min-height:0;max-height:none!important;overflow:visible!important;padding:20px!important;transform:none!important;color:#382a1c;text-align:left;
+  background:#edd9ad url('assets/quest-parchment.png') center/100% 100% no-repeat!important;border:1px solid #9b7d49;border-radius:4px;box-shadow:0 4px 10px #0e0a0670;
+}
+#taskRail .order-card>* ,#taskRail .contract-offer-leaf>*{grid-column:auto!important;grid-row:auto!important}
+.quest-eyebrow,.agreement-leaf-kind{font:600 10px/1.25 Arial,sans-serif;letter-spacing:1.4px;color:#795f38}
+.quest-sheet h3,#taskRail h3,#checklist h3{font-size:19px;line-height:1.2;margin:0;padding:0;border:0;color:#382a1c;overflow-wrap:anywhere}
+.quest-recipient{margin:1px 0 6px;font-size:14px;line-height:1.35;color:#4d3821}
+.quest-recipient small{display:block;color:#745c3d;font-size:12px}
+.parcel-recipe{display:grid;gap:6px;list-style:none;margin:0;padding:0}
+.parcel-recipe li{display:flex;align-items:center;gap:8px;border-bottom:1px dashed #a4855655;padding:4px 0}
+.parcel-recipe img{width:34px!important;height:34px!important;object-fit:contain;flex:0 0 34px}
+.parcel-recipe li>span{flex:1;min-width:0;font-size:14px;line-height:1.25;overflow-wrap:anywhere}
+.parcel-recipe li>b{font-size:15px;white-space:nowrap;color:#47311a}
+.parcel-recipe li.done{color:#39642c}.parcel-recipe li.done>b{color:#39642c}
+.quest-price{display:block;margin:7px 0 2px;font-size:17px;color:#543714}
+.parcel-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;align-items:stretch;margin-top:7px}
+.parcel-actions>*{grid-column:auto!important;grid-row:auto!important}
+.parcel-actions .parcel-worker-status,.parcel-actions .parcel-claim,.parcel-actions .parcel-completed-label{grid-column:1/-1!important}
+.parcel-actions button{min-height:39px;font-size:13px;padding:8px!important;overflow-wrap:anywhere}
+#taskRail .contract-offer-leaf .parcel-actions{display:grid;grid-template-columns:1fr 1fr}
+#taskRail .contract-offer-leaf>strong{font-size:18px;color:#3e2c14}
+#taskRail .agreement-leaf-items{justify-content:flex-start}
+#taskRail .agreement-leaf-info,#taskRail .agreement-leaf-compact{font-size:13px}
+.regular-contracts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(265px,100%),1fr));align-items:start;gap:16px}
+.regular-contracts article{padding:22px!important}.regular-contracts article h3,.regular-contracts article p,.regular-contracts article small{color:#44311d!important}
+.regular-contracts .contract-recipe{display:grid;gap:7px}.regular-contracts .contract-recipe span{display:flex;align-items:center;gap:7px}
+.regular-contracts .contract-recipe img{width:36px;height:36px}.regular-contracts .contract-recipe b{font-size:14px;color:#44311d}
+.regular-contracts .parcel-worker-status{color:#3b622e!important}
+.quest-book{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(270px,100%),1fr));gap:18px;text-align:left}
+.modal{position:fixed;inset:0;padding:24px 12px;align-items:start;overflow-x:hidden;overflow-y:auto;z-index:150}
+.modal .modal-card,.modal .modal-card.wide,.story-mode .modal-card:has(.regular-contracts){width:min(100%,1040px);max-width:1040px;max-height:none!important;height:auto;overflow:visible!important;padding:clamp(24px,4vw,44px)}
+.modal .modal-card:has(.quest-book){width:min(100%,1100px)}
+.modal.order-brief{padding:24px 12px;align-items:start;justify-items:center;background:#15100bc9}
+.modal.order-brief .modal-card{width:min(100%,620px);background:#edd9ad url('assets/quest-parchment.png') center/100% 100% no-repeat}
+.modal .modal-card:has(#contractOfferSheet){width:min(100%,680px);background:none;border:0;padding:0}
+#contractOfferSheet{padding:32px!important;text-align:center}
+#contractOfferSheet p,#contractOfferSheet h2{color:#44311d}
+#work .work-heading{height:auto;min-height:68px;display:flex;align-items:center;flex-wrap:wrap;padding:12px 24px;gap:12px}
+#game.has-agreement-board #work .work-heading{padding-right:24px}
+#work .work-heading>div:not(#workProgress){flex:1;min-width:180px;max-width:none}
+#work .work-heading h1{font-size:20px}
+#work #shelves{position:relative;top:auto;left:auto;right:auto;height:228px;display:grid;grid-template-columns:minmax(0,1fr);justify-content:stretch;gap:8px;margin:0 20px}
+#work .shelf-row{width:100%;min-width:0}
+#work .shelf-row{grid-template-columns:repeat(6,minmax(70px,142px));gap:clamp(5px,1.4vw,18px)}
+#work .shelf-row .shelf-box{width:100%;min-width:0}
+#work #table{position:relative;left:auto;right:auto;top:auto;bottom:auto;margin:32px clamp(14px,4vw,85px) 34px;height:340px;min-height:340px}
+#work.sorting.has-note #pile,#work.sorting #pile{left:10px;right:10px;width:auto}
+#work.sorting #checklist{display:none!important}
+#work.fulfillment #table{display:grid;grid-template-columns:minmax(200px,.8fr) minmax(240px,1.15fr) minmax(245px,1fr);gap:18px;align-items:start;height:auto;min-height:390px;padding:13px}
+#work.fulfillment .table-caption{display:none}
+#work.fulfillment #boxZone{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:auto;min-width:0;height:360px;min-height:360px;border:0;display:block}
+#work.fulfillment #parcelDrop{width:100%;height:100%;min-height:360px}
+#work.fulfillment #sourceBox{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:100%;min-width:0;height:360px;min-height:360px}
+#work #checklist{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:100%;max-width:none;padding:20px!important}
+#work #checklist .check-row{min-height:45px;gap:7px}
+#work #checklist .check-name{font-size:14px;overflow-wrap:anywhere}
+#work #checklist .dispatch-status{height:auto;min-height:0;margin:8px 0}
+#work #checklist .dispatch-status strong{font-size:17px;color:#543714}
+#work .work-hint{bottom:5px;left:15px;right:15px;font-size:13px}
+#work #dwarfWorkStatus{top:calc(var(--work-heading-height,68px) + var(--shelves-height,228px));left:clamp(16px,4vw,85px);max-width:45%}
+#work #goblinWorkStatus{top:calc(var(--work-heading-height,68px) + var(--shelves-height,228px));right:clamp(16px,4vw,85px);max-width:45%}
+#work #inspector{width:min(550px,calc(100% - 28px));max-width:none;height:430px;top:260px}
+#work #targetPreview{max-width:calc(48% - 10px)}
+.story-mode #storyObjective{top:calc(var(--hud-height,77px) + var(--tasks-height,0px) + 15px)}
+.story-mode:has(#work:not(.hidden)) #storyObjective{top:auto;bottom:18px}
+#cityScene,#towerInterior{top:calc(var(--hud-height,77px) + var(--tasks-height,0px));bottom:var(--footer-height,70px)}
+#game #restorationScene{inset:calc(var(--hud-height,77px) + var(--tasks-height,0px)) 0 var(--footer-height,70px)}
+.parcel-receipt{background:#edd9ad url('assets/quest-parchment.png') center/100% 100% no-repeat}
+.parcel-receipt .parcel-recipe{display:grid}.parcel-receipt .parcel-recipe img{width:26px!important;height:26px!important}
+.story-mode #dwarfStation,.story-mode #goblinStation,.story-mode #dwarfStation:hover,.story-mode #goblinStation:hover{background:none!important}
+#dwarfStation::before,#goblinStation::before{content:'';position:absolute;top:0;bottom:0;z-index:-1;background:#293022e8;border-radius:5px;pointer-events:none}
+#dwarfStation::before{left:143px;right:0}#goblinStation::before{left:0;right:143px}
+@media(min-width:1600px){#work #table{margin-left:8vw;margin-right:8vw}#work .shelf-row{grid-template-columns:repeat(6,minmax(100px,170px))}#work .shelf-row .shelf-box img.boxart{width:112px;height:90px}}
+@media(max-width:1000px){#game>header .rep{display:none}#work.fulfillment #table{grid-template-columns:minmax(185px,.8fr) minmax(210px,1fr)}#work.fulfillment #checklist{grid-column:1/-1;grid-row:1}#work.fulfillment #checklist .check-row{display:inline-flex;vertical-align:top;width:calc(50% - 8px)}#work.fulfillment #checklist .note-actions{display:flex;gap:10px}#work.fulfillment #checklist .note-actions>*{flex:1}}
+@media(max-width:759px){
+  #game>header{min-height:106px;flex-wrap:wrap;gap:6px;padding:8px 10px}
+  #game>header #goldWallet{flex:0 1 auto;margin:0;gap:5px}#game>header #gold{font-size:44px!important}#game>header #walletIcon{width:32px;height:32px}
+  #game>header .day{order:4;flex:1 0 100%;max-width:none;display:flex;justify-content:center;align-items:center;gap:12px;padding:3px 9px}
+  #game>header .day b{font-size:15px}#game>header #clock{font-size:13px}
+  #game>header #sound{margin-left:auto}#game>header .icon{width:34px;height:34px;padding:5px}
+  #game>header #cityNav{font-size:13px;padding:6px 9px;min-width:0;min-height:34px}
+  #game>footer #stepHint{display:none}#game>footer nav{justify-content:center;margin:0;width:100%}#game>footer nav button{padding:8px;font-size:12px}
+  #taskRail{padding:9px 10px 12px}.task-letters{grid-template-columns:1fr;gap:10px}
+  #taskRail .order-card,#taskRail .contract-offer-leaf{padding:18px!important}
+  .parcel-recipe{grid-template-columns:1fr}.parcel-actions button{font-size:13px}
+  #work .work-heading{padding:12px;gap:8px}#work .work-heading h1{font-size:17px}#work .work-heading>div:not(#workProgress){min-width:160px}
+  #work .work-heading #workProgress{margin-left:auto;font-size:12px}#work .work-heading #autoSortButton{min-width:125px;font-size:13px}#work #unknownTrayButton{width:auto;font-size:12px}
+  #work #shelves{height:254px;margin:0 9px;grid-template-rows:100px 144px;gap:10px}
+  #work .shelf-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;align-content:end}
+  #work .upper-shelf{grid-template-columns:repeat(4,minmax(0,1fr))}.shelf-placeholder{display:none!important}
+  #work .lower-shelf{grid-template-rows:70px 70px;align-items:end}
+  #work .shelf-row .shelf-box{height:72px;min-height:0}.shelf-row .shelf-box img.boxart{height:48px;width:62px;bottom:21px}
+  #work .shelf-row .shelf-box .tag{font-size:11px;line-height:1.1;white-space:normal;min-height:22px;bottom:0}
+  #work #table{margin:36px 10px 30px;height:390px;min-height:390px;border-width:7px}
+  #work #dwarfWorkStatus,#work #goblinWorkStatus{top:calc(var(--work-heading-height,115px) + var(--shelves-height,254px));font-size:10px;height:25px;max-width:47%;left:12px}
+  #work #goblinWorkStatus{left:auto;right:12px}
+  #work.fulfillment #table{grid-template-columns:1fr;gap:16px;padding:9px;height:auto;min-height:1000px}
+  #work.fulfillment #checklist{grid-column:1;grid-row:1}#work.fulfillment #checklist .check-row{display:flex;width:100%}#work.fulfillment #checklist .note-actions{display:grid}
+  #work.fulfillment #boxZone,#work.fulfillment #sourceBox{height:330px;min-height:330px}
+  #work.fulfillment #parcelDrop{min-height:330px}
+  #work #inspector{top:340px;height:430px}#inspectScroll{left:9px;right:9px}#work #targetPreview{max-width:calc(100% - 20px);width:calc(100% - 20px);left:10px;right:10px;top:780px}
+  .story-mode #storyObjective{left:12px;width:calc(100% - 24px);max-width:310px;font-size:12px}
+  .story-mode #storyAction{left:12px;top:105px;width:min(300px,calc(100% - 24px))}
+  .story-mode #speech{left:12px;right:12px;top:160px;width:auto;max-width:310px;padding:17px}
+  .story-mode #speech h2{font-size:22px}.story-mode #speech p{font-size:15px}
+  #visitor{left:12%;width:76%;height:450px;bottom:120px}
+  #receptionAction{left:12px;right:12px;bottom:10px;gap:7px}#receptionAction button{padding:10px;font-size:14px}
+  #reception .bag{left:auto;right:12px;bottom:170px;width:120px;height:150px}
+  #reception #notice{display:none}
+  .story-mode #dwarfStation,.story-mode #goblinStation{width:calc(50% - 14px);height:92px;bottom:104px;padding:4px 6px;left:8px;right:auto;background:none;z-index:8}
+  .story-mode #goblinStation{left:auto;right:8px}
+  #dwarfStation>img,#goblinStation>.goblin-portrait{height:155px;width:115px;left:0;right:auto;bottom:44px}
+  #goblinStation>.goblin-portrait{left:auto;right:0}
+  #dwarfStation .dwarf-name,#goblinStation>strong{font-size:16px;margin-top:48px}.dwarf-status,.goblin-label{font-size:10px!important;line-height:1.2;min-height:0!important}
+  #dwarfStation .dwarf-progress,#goblinStation .goblin-progress{margin-top:4px}
+  #dwarfStation::before,#goblinStation::before{left:0;right:0;top:46px}
+  #restartTutorial{display:none}
+  .story-mode .modal-card:has(#inheritanceLetter),.story-mode .modal-card:has(#guildFounding),.story-mode .modal-card:has(#guildCharter),.story-mode .modal-card:has(.story-business-grid){width:100%;padding:26px 20px}
+  .story-business-grid{grid-template-columns:1fr}.modal-card h2{font-size:25px}.modal-card p{font-size:15px}
+  #inheritanceLetter #acceptInheritance,#restorationOffer #restoreShop{min-width:0;width:100%}.restoration-preview{gap:6px}.restoration-preview b{font-size:13px}
+  .guild-charter-work{grid-template-columns:1fr}.guild-panel{width:100%}
+}

@@ -6,6 +6,7 @@ const assert=require('node:assert/strict');
 const BASE=process.env.STORY_TEST_URL||'http://127.0.0.1:18765/';
 const inventory=p=>p.evaluate(()=>owned().map(x=>x.uid).sort((a,b)=>a-b));
 async function exposedSource(p){
+  await p.locator('#sourceScroll').scrollIntoViewIfNeeded();
   return p.evaluate(()=>{
     const pane=$('sourceScroll').getBoundingClientRect();
     return [...document.querySelectorAll('#sourceItems .item')].filter(e=>{
@@ -36,7 +37,7 @@ async function pick(p,uid){
       await p.reload();await p.locator('#loadGame').click();assert.equal(await p.evaluate(()=>state.gold),200);assert.deepEqual(await inventory(p),original.ids,'Repairing saved positions preserves ownership');
       await p.locator('#orderBoard [data-order-id="'+original.order+'"]').click();await p.locator('#shelves [data-cat="4"]').click();
       assert.equal(await p.locator('#shelves [data-cat="4"] .shelf-count').textContent(),'22');assert.equal(await p.locator('#sourceItems .item').count(),22);assert.ok((await exposedSource(p)).length>0,'Opening the22-item crate immediately exposes actual clickable goods');
-      assert.equal(await p.evaluate(()=>state.gold),200,'Position repair spends nothing');await p.screenshot({path:'audit_source/source-crate-22-'+width+'.png'});
+      assert.equal(await p.evaluate(()=>state.gold),200,'Position repair spends nothing');await p.screenshot({path:'audit_source/adaptive-source-crate-22-'+width+'.png',fullPage:true});
       // All22 original source items can be reached by scrolling; no tidy button.
       for(const uid of original.stock){const e=p.locator('#sourceItems [data-uid="'+uid+'"]');await e.scrollIntoViewIfNeeded();assert.ok((await exposedSource(p)).includes(uid),'Original uid '+uid+' is reachable in the source pane');}
       await pick(p,original.stock[0]);await p.evaluate(()=>Dwarf.setEnabled(true));await p.waitForTimeout(2800);

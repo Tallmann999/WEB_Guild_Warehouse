@@ -3,7 +3,9 @@
 // Select types only. Purchases, original instances, gold and reservations belong
 // to the existing trading systems and are never changed by this module.
 const LootBalance=(()=>{
-  const RECIPES={chef:[{type:38,count:2},{type:31,count:2},{type:32,count:2}],alchemy:[{type:0,count:2},{type:1,count:2},{type:6,count:2}]};
+  const RECIPES={chef:[{type:38,count:2},{type:31,count:2},{type:32,count:2}],alchemy:[{type:0,count:2},{type:1,count:2},{type:6,count:2}],royal:[{type:18,count:5},{type:19,count:5},{type:24,count:5}]};
+  const ELITE_EQUIPMENT=[18,19,24];
+  const ELITE_THEME={name:'Снаряжение для королевской оружейной',trophies:[0,1,49,52,54,55],groups:[3,3,3,3],elite:true};
   const THEMES=[
     {name:'Добыча из Сумрачного леса',trophies:[0,1,49,52,53,55,56,61,74,78],groups:[1,4,4,3]},
     {name:'Трофеи с охотничьего перевала',trophies:[0,2,49,50,51,52,54,57,58,64,65],groups:[4,4,3,1]},
@@ -21,7 +23,7 @@ const LootBalance=(()=>{
     const plants=stage===2?[6,7,8]:range(6,11),ore=stage===2?[12,13,16]:range(12,17);
     const equipment=stage===2?[18,19,24,25]:stage===3?[18,19,20,21,24,25,26,27,29]:range(18,29);
     const organs=stage===2?[]:stage===3?[66,69]:items.filter(x=>x.id>=66&&x.cat===4&&!x.food).map(x=>x.id);
-    return {trophies:unique(trophies).filter(type=>items[type].cat===0),other:unique([...food,...plants,...ore,...equipment,...organs]).filter(type=>items[type].cat!==0)};
+    return {trophies:unique(trophies).filter(type=>items[type].cat===0),other:unique([...food,...plants,...ore,...equipment,...organs]).filter(type=>items[type].cat!==0),eliteEquipment:stage>=5?ELITE_EQUIPMENT.slice():[]};
   }
   function inventory(){
     const snapshot=typeof state==='undefined'?{}:state,seen=new Set(),free=new Map(),owned=new Map();
@@ -52,13 +54,13 @@ const LootBalance=(()=>{
     // satisfy only their own parcel; they are not counted as free stock again.
     const priority=o=>o.assignedTo==='goblin'?2:o.regularKey?1:0;
     for(const order of orders.slice().sort((a,b)=>priority(a)-priority(b)))useRecipe(order.recipe,order.packed,priority(order));
-    for(const [key,c] of Object.entries(snapshot.story?.regularContracts||{}))if(c.signed&&!orders.some(o=>o.regularKey===key))useRecipe(RECIPES[key],[],3);
+    for(const [key,c] of Object.entries(snapshot.story?.regularContracts||{}))if(c.signed&&!c.completed&&(c.deliveries||0)<3&&!orders.some(o=>o.regularKey===key))useRecipe(RECIPES[key],[],3);
     return requests;
   }
   function makeTypes({day=2,index=0,lesson=false}={}){
     if(lesson)return {types:[38,38,31,31,0,0,6,24],theme:'Первая торговая поставка',unknownBudget:0};
     const ordinal=Math.max(0,Math.floor(Number(index)||0)),stage=Math.max(2,Math.floor(Number(day)||2));
-    const theme=THEMES[ordinal%THEMES.length],roll=random((Math.imul(stage,2654435761)^Math.imul(ordinal+1,2246822519))>>>0);
+    const themes=stage>=5?[...THEMES,ELITE_THEME]:THEMES,theme=themes[ordinal%themes.length],roll=random((Math.imul(stage,2654435761)^Math.imul(ordinal+1,2246822519))>>>0);
     const pools=catalogue(stage),{snapshot,orders,free,owned}=inventory(),requests=demand(snapshot,orders,free),entries=[],counts=new Map();
     const add=(type,requested=false,priority=4)=>{entries.push({type,requested,priority});counts.set(type,(counts.get(type)||0)+1);};
     const wanted=trophy=>{
@@ -84,7 +86,7 @@ const LootBalance=(()=>{
       const trophy=slot<4,request=wanted(trophy);
       if(request){add(request.type,true,request.priority);continue;}
       const pool=trophy?pools.trophies:pools.other;
-      const preferred=trophy?theme.trophies:pool.filter(type=>items[type].cat===theme.groups[slot-4]);
+      const preferred=trophy?theme.trophies:theme.elite?pools.eliteEquipment:pool.filter(type=>items[type].cat===theme.groups[slot-4]);
       add(filler(pool,preferred));
     }
     // Even an unusually repetitive outstanding recipe must not make the next

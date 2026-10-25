@@ -5,7 +5,13 @@ const {chromium}=require('C:/Users/User/.cache/codex-runtimes/codex-primary-runt
 const assert=require('node:assert/strict');
 const BASE=process.env.STORY_TEST_URL||'http://127.0.0.1:18765/';
 async function geometry(p,label,count=8){
- const report=await p.evaluate(()=>{const p=$('pile').getBoundingClientRect();return [...$('pile').querySelectorAll('.item')].map(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('.item');return{uid:Number(e.dataset.uid),inside:r.left>=p.left-1&&r.right<=p.right+1&&r.top>=p.top-1&&r.bottom<=p.bottom+1,hit:hit===e,rect:{left:r.left,right:r.right,top:r.top,bottom:r.bottom},pos:state.bag.find(x=>x.uid===Number(e.dataset.uid)).tablePos};});});
+ const report=[];
+ // The responsive workbench can be taller than the physical viewport. Check
+ // each real centre after scrolling it into view, without weakening pile bounds.
+ for(const item of await p.locator('#pile .item').all()){
+  await item.scrollIntoViewIfNeeded();
+  report.push(await item.evaluate(e=>{const p=document.getElementById('pile').getBoundingClientRect(),r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('.item');return{uid:Number(e.dataset.uid),inside:r.left>=p.left-1&&r.right<=p.right+1&&r.top>=p.top-1&&r.bottom<=p.bottom+1,hit:hit===e,rect:{left:r.left,right:r.right,top:r.top,bottom:r.bottom},pos:state.bag.find(x=>x.uid===Number(e.dataset.uid)).tablePos};}));
+ }
  assert.equal(report.length,count,label+': all item buttons rendered');
  assert.deepEqual(report.filter(x=>!x.inside||!x.hit),[],label+': every item must fit and have a clickable centre');
 }
@@ -16,7 +22,7 @@ async function geometry(p,label,count=8){
   assert.equal(await p.evaluate(()=>state.bag.length),8);await geometry(p,width+' fresh purchased bag');const original=await p.evaluate(()=>JSON.parse(JSON.stringify(state)));
   // Reproduce exactly the bad coordinates written by the old four-item FTUE.
   await p.evaluate(()=>{state.bag.forEach((x,i)=>x.tablePos={x:.12+i*.22,y:.35});save();});
-  await p.reload();await p.locator('#loadGame').click();await geometry(p,width+' saved invalid inherited layout');await p.screenshot({path:'audit_source/story-first-bag-'+width+'.png'});
+  await p.reload();await p.locator('#loadGame').click();await geometry(p,width+' saved invalid inherited layout');await p.screenshot({path:'audit_source/adaptive-story-first-bag-'+width+'.png',fullPage:true});
   const expected=await p.evaluate(()=>state.bag.map(x=>({uid:x.uid,cat:items[x.type].cat,unknown:isUnknown(x)})));
   for(const x of expected){
    const item=p.locator('#pile [data-uid="'+x.uid+'"]');await item.click();

@@ -1,0 +1,21 @@
+{
+  "name": "the-lootkeeper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local browser game with Phaser scenes and a persistent inventory simulation",
+  "scripts": {
+    "start": "node tools/open-game.cjs",
+    "serve": "node tools/serve.cjs",
+    "check:launcher": "node tools/open-game.cjs --check",
+    "test:goblin": "node tests/story-goblin-claim.cjs",
+    "test:phaser": "node tests/phaser-engine.cjs",
+    "test:layers": "node tests/phaser-layers.cjs",
+    "test:viewport": "node tests/viewport-fit.cjs",
+    "test:adaptive": "node tests/viewport-fit.cjs",
+    "test:royal": "node tests/story-royal-progress.cjs",
+    "test:repair": "node tests/story-repair-tower.cjs",
+    "test:parcels": "node tests/story-parcel-interface.cjs",
+    "test:contracts": "node tests/story-contract-three.cjs",
+    "test:server": "node tests/local-server.cjs"
+  }
+}

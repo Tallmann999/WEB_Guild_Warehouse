@@ -3,7 +3,7 @@
 // Founding is a saved, explicit consent to unattended ordinary trade. This
 // module owns presentation and milestones, never inventory or currency.
 const Guild=(()=>{
-  const INTRO='Твоя репутация выросла, и теперь ты можешь включить автоматизацию работы лавки и начать свою гильдию. Введи название своей гильдии.';
+  const INTRO='Грик собрал и выдал первую посылку! Теперь у лавки есть надёжные помощники, и ты готов основать свою гильдию. Как она будет называться?';
   const CITY_INTRO='Для развития гильдии нам нужно расширить свои полномочия в городе. На примете есть заброшенное здание, которое надо восстановить.';
   const PHASES=['name','charter','city_intro','tower','complete'];
   let presenting=false;
@@ -29,7 +29,12 @@ const Guild=(()=>{
   function showName(){
     const g=ensure();if(!g||g.phase!=='name'||presenting)return false;
     presenting=true;
-    modal('<section id="guildFounding" class="guild-panel"><span class="brief-eyebrow">НОВАЯ ГЛАВА</span><h2>Начало своей гильдии</h2><p>'+INTRO+'</p><form id="guildNameForm"><label for="guildNameInput">Название гильдии</label><input id="guildNameInput" name="guildName" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="Как назовём гильдию?" aria-describedby="guildNameHint guildNameError"><small id="guildNameHint">От 1 до 32 символов</small><p id="guildNameError" class="guild-form-error" role="alert"></p><button id="guildCreate" class="primary" type="submit">Основать гильдию</button></form></section>',{locked:true,wide:true});
+    // The milestone takes the player home before stopping the world. It is a
+    // direct celebration, rather than another actionable notice on the board.
+    if(typeof Tower!=='undefined'&&Tower.isOpen())Tower.close('none');
+    City.close();
+    if(state.screen!=='reception')setScreen('reception','sort');
+    modal('<section id="guildFounding" class="guild-panel"><span class="brief-eyebrow">НОВАЯ ГЛАВА</span><h2>Поздравляем!</h2><p>'+INTRO+'</p><form id="guildNameForm"><label for="guildNameInput">Название гильдии</label><input id="guildNameInput" name="guildName" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="Как назовём гильдию?" aria-describedby="guildNameHint guildNameError"><small id="guildNameHint">От 1 до 32 символов</small><p id="guildNameError" class="guild-form-error" role="alert"></p><button id="guildCreate" class="primary" type="submit">Основать гильдию</button></form></section>',{locked:true,wide:true});
     const input=$('guildNameInput');input.value=g.draftName;
     input.oninput=()=>{g.draftName=input.value;$('guildNameError').textContent='';save();};
     $('guildNameForm').onsubmit=e=>{
@@ -82,8 +87,9 @@ const Guild=(()=>{
     tower?.classList.toggle('guild-target',visible&&g.phase==='tower');buy?.classList.toggle('guild-target',visible&&g.phase==='tower');
     if(!visible)return;
     const intro=g.phase==='city_intro';guide.dataset.phase=g.phase;
-    guide.querySelector('h2').textContent=intro?'Гильдии нужен новый дом':'Заброшенное здание';
-    $('guildCityText').textContent=intro?(state.city?.towerOwned?'Башня уже принадлежит тебе. Она станет следующим местом развития гильдии.':CITY_INTRO):'Эта старая башня ждёт восстановления. Купить её можно за 1000 золотых. '+(state.gold<1000?'Нужно ещё '+(1000-state.gold)+' монет — лавка продолжает зарабатывать.':'Лавка продолжит работать и после покупки.');
+    guide.querySelector('.guild-city-caption').classList.toggle('hidden',!intro);
+    guide.querySelector('h2').textContent=intro?'Гильдии нужен новый дом':'';
+    $('guildCityText').textContent=intro?(state.city?.towerOwned?'Башня уже принадлежит тебе. Она станет следующим местом развития гильдии.':CITY_INTRO):'';
     hidden('guildCityNext',!intro);hidden('guildGuideReturn',intro);hidden('guildTowerArrow',intro);
     if(!intro&&tower){
       const map=$('cityMap').getBoundingClientRect(),r=tower.getBoundingClientRect(),unit=map.width/$('cityMap').clientWidth;
@@ -95,7 +101,7 @@ const Guild=(()=>{
   function onCityClosed(){if($('guildCityGuide'))$('guildCityGuide').classList.add('hidden');}
   function update(){
     const g=ensure(),nav=$('guildNav');if(!nav)return;
-    hidden('guildNav',!state.started||!g);nav.textContent=g?.founded?'Гильдия':'Основать гильдию';nav.title=g?.founded?g.name:'Основать свою гильдию';
+    hidden('guildNav',!state.started||!g?.founded);nav.textContent='Гильдия';nav.title=g?.name||'Гильдия';
     $('game').classList.toggle('has-guild',!!g?.founded&&state.started);
   }
   function advance(){
@@ -104,6 +110,10 @@ const Guild=(()=>{
   }
   function afterLoad(){
     const g=ensure();update();if(!g)return;
+    if(state.screen==='tower'&&state.city?.towerOwned){
+      if(g.founded&&['city_intro','tower'].includes(g.phase)){g.phase='complete';save();}
+      return;
+    }
     if(g.founded&&['city_intro','tower'].includes(g.phase))City.open(g.phase==='tower'?'tower':'shop');
     else advance();
   }
