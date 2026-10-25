@@ -48,7 +48,7 @@ function tutorialFrame(){
   if(t.stage==='sort'){
     if(modalOpen){
       if($('dirt')){
-        if($('cleanKey').disabled)tutorialGuide($('closeModal'),'Предмет распознан! Закройте окно крестиком.');
+        if($('cleanKey').disabled)tutorialGuide(null,'Предмет распознан! Окно сейчас закроется само.');
         else tutorialGuide($('dirt'),'Зажмите левую кнопку мыши и водите по кругу, чтобы очистить предмет.',true);
       }else tutorialGuide($('closeModal'),'Закройте окно и продолжите обучение.');return;
     }

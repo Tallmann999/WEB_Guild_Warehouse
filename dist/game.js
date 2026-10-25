@@ -11,7 +11,7 @@ const SAVE_KEY = 'guild-warehouse-playtest-1';
 const rankNames = ['Малая лавка','Надёжный поставщик','Гильдейский торговец','Купеческий дом','Известная фактория','Королевский поставщик','Легенда гильдии'];
 let state = freshState();
 let scale=1, drag=null, depth=100, suppressDropClick=false, toastTimer, modalCleanup=null, previousFocus=null, modalLocked=false;
-let audioContext=null, last=performance.now(), saveClock=0;
+let audioContext=null, last=performance.now(), saveClock=0, recognitionFeedback=null;
 
 function freshState(){return {version:1,day:1,seconds:CONFIG.daySeconds,started:false,ended:false,screen:'reception',mode:'sort',gold:CONFIG.startingGold,rep:0,stock:[],junk:[],bag:[],offers:[],schedule:[],order:null,collection:[],upgrade:false,uid:0,selected:null,activeCat:null,inspectCat:null,targetCat:0,paused:false,autoSorting:false,muted:true,dayIncome:0,daySpent:0,daySorted:0,dayErrors:0,dayOrders:0,totalOrders:0,dayBought:0,combo:0};}
 function rand(a,b){return Math.floor(a+Math.random()*(b-a+1));}
@@ -28,7 +28,7 @@ function gainGold(amount,origin){
 }
 function animateGold(amount,origin){
   const from=origin?.getBoundingClientRect?.()||{left:innerWidth/2,top:innerHeight/2,width:0,height:0};
-  const target=$('gold').getBoundingClientRect();
+  const target=($('walletIcon')||$('gold')).getBoundingClientRect();
   for(let i=0;i<Math.min(9,amount);i++){
     const coin=document.createElement('span');coin.className='reward-coin';coin.textContent='●';document.body.append(coin);
     const x=from.left+from.width/2,y=from.top+from.height/2,dx=target.left+target.width/2-x,dy=target.top+target.height/2-y;
@@ -36,6 +36,21 @@ function animateGold(amount,origin){
     const motion=coin.animate([{transform:'translate(-50%,-50%) scale(.6)',opacity:0},{transform:`translate(${rand(-65,65)}px,${rand(-55,15)}px) scale(1)`,opacity:1,offset:.25},{transform:`translate(${dx}px,${dy}px) scale(.45)`,opacity:1}],{duration:850,delay:i*65,easing:'ease-in-out'});
     motion.finished.catch(()=>{}).finally(()=>coin.remove());
   }
+}
+function showGoldSpend(amount){
+  if(!(amount>0))return;
+  const wallet=$('goldWallet');if(!wallet)return;
+  wallet.querySelectorAll('.wallet-change').forEach(node=>node.remove());
+  const change=document.createElement('span');change.className='wallet-change spending';change.textContent='−'+amount;
+  change.setAttribute('role','status');change.setAttribute('aria-label','Потрачено '+amount+' монет');wallet.append(change);
+  const motion=change.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)',offset:.12},{opacity:1,transform:'translateY(-4px)',offset:.72},{opacity:0,transform:'translateY(-15px)'}],{duration:1700,easing:'ease-out'});
+  motion.finished.catch(()=>{}).finally(()=>change.remove());
+}
+function advanceRecognitionFeedback(dt){
+  if(!recognitionFeedback||document.hidden)return;
+  if(!recognitionFeedback.title.isConnected||$('modal').classList.contains('hidden')){recognitionFeedback=null;return;}
+  recognitionFeedback.elapsed+=Math.max(0,Number(dt)||0);
+  if(recognitionFeedback.elapsed>=1.5){recognitionFeedback=null;closeModal();render();}
 }
 function makeLoot(big=false){
   const count=(big?24:state.day===1?12:14)+(state.bagCapacity?2:0),organic=organicTypes(),other=pool().filter(t=>!items[t].organic);
@@ -182,7 +197,7 @@ function updateHud(){
   }
   signal.classList.toggle('waiting',showArrival);hidden('arrivalSignal',!showArrival);
   if($('goldAdButton')&&$('receptionGoldAd'))updateGoldAd();
-  Story.update();
+  Story.update();City.update();if(typeof Guild!=='undefined')Guild.update();
 }
 function setScreen(screen,mode=state.mode){if(screen==='work'&&mode==='order'&&!orderAccepted()){openOrder();return;}cancelDrag();state.screen=screen;state.mode=mode;state.activeCat=null;state.inspectCat=null;state.selected=null;hidden('inspector',true);hidden('targetPreview',true);hidden('tooltip',true);render();save();}
 function render(){
@@ -204,6 +219,7 @@ function renderReception(){
   const head=counterGuest(),pending=head?.kind==='order'?head.value:null;
   const action=$('receptionAction');action.innerHTML='';hidden('speech',false);hidden('bag',true);hidden('parcel',true);hidden('visitor',false);
   if(!state.started)return;
+  if(Story.enabled()&&Contracts.renderReception())return;
   // Leave the counter empty until the first visitor's scheduled arrival.
   if(state.day===1&&!state.dayBought&&!state.offers.length&&state.schedule[0]?.at===2){
     hidden('speech',true);hidden('visitor',true);$('stepHint').textContent='';return;
@@ -212,7 +228,7 @@ function renderReception(){
     const offer=head?.kind==='bag'?head.value:null;
     if(offer){
       prepareOffer(offer);const price=offer.price;const v=adventurers[offer.visitor];$('visitor').src=asset(v[2]);hidden('bag',false);$('bag').querySelector('img').src=asset(offer.big?'storage/bag-premium':'storage/bag');$('bag').classList.toggle('premium',!!offer.big);
-      $('speech').innerHTML=`<span class="eyebrow">${v[1]}</span><h2>${v[0]}</h2><p>Добыча из похода. ${offer.big?'Большой мешок':'Мешок'} за <b>${price} монет</b> — внутри кое-что интересное!</p>`;
+      $('speech').innerHTML=`<span class="eyebrow">${v[1]}</span><h2>${v[0]}</h2><p>${offer.theme||'Добыча из похода'}. ${offer.big?'Большой мешок':'Мешок'} за <b>${price} монет</b>${offer.theme?' — трофеи и полезные припасы.':' — внутри кое-что интересное!'}</p>`;
       button(action,`Купить ${offer.big?'большой мешок':'мешок'} · ${price} монет`,buyBag,'buyBag',state.gold<price).className='primary';
       if(state.bag.length)button(action,'Продолжить разбор на столе',()=>setScreen('work','sort'),'resumeBag');
       $('notice').innerHTML=`<b>Гость у стойки</b><br>Новый мешок добавится к находкам на столе.<br>На столе: ${state.bag.length} предметов.`;
@@ -244,6 +260,7 @@ function planDay(firstArrival=0){
 function startGame(){Story.start();}
 function restartWithTutorial(){
   if(state.autoSorting)return;
+  BagPour.clear();
   try{localStorage.removeItem(TUTORIAL_KEY);}catch{}
   cancelDrag();forceCloseModal();clearTimeout(toastTimer);$('toast').classList.remove('show');$('effects').replaceChildren();document.querySelectorAll('.reward-coin').forEach(coin=>coin.remove());startGame();
 }
@@ -280,23 +297,26 @@ function tickArrivals(){
 }
 function waitAtWindow(){if(state.paused)return;const next=state.schedule[0];if(next){state.seconds=Math.max(0,CONFIG.daySeconds-next.at);tickArrivals();render();}}
 function tutorialTablePosition(index,count){
-  const columns=Math.min(4,Math.max(1,count)),rows=Math.ceil(count/columns);
-  return {x:columns===1?.5:.08+(index%columns)*.84/(columns-1),y:rows===1?.35:.08+Math.floor(index/columns)*.84/(rows-1)};
+  return BagPour.position(index,count,0);
 }
 function repairTableLayout(list){
   const invalid=list.some(x=>x.tablePos&&(!Number.isFinite(x.tablePos.x)||!Number.isFinite(x.tablePos.y)||x.tablePos.x<0||x.tablePos.x>1||x.tablePos.y<0||x.tablePos.y>1));
   if(invalid)list.forEach((x,i)=>{x.tablePos=tutorialTablePosition(i,list.length);});
   return invalid;
 }
-function buyBag(){
-  if(state.paused||!state.offers.length||counterGuest()?.kind!=='bag')return;
+function buyBag(options={}){
+  if(state.paused||BagPour.active()||!state.offers.length||counterGuest()?.kind!=='bag')return;
   prepareOffer(state.offers[0]);if(state.gold<state.offers[0].price)return;
   const offer=state.offers.shift();state.gold-=offer.price;state.daySpent+=offer.price;state.dayBought++;
   startVisitorGap();
   state.bag.push(...offer.loot);state.combo=0;trackSortingBag(offer.loot);
   if(Story.enabled())Story.onBagPurchased(offer);
-  for(const [i,x] of offer.loot.entries()){x.tablePos=offer.tutorial?tutorialTablePosition(i,offer.loot.length):{x:Math.random(),y:Math.random()};x.depth=++depth;}
-  if(!INTRO_TIMING[state.day]&&!allOrders().some(o=>o.accepted===false)&&(!allOrders().length||state.offers.length||state.schedule.length))state.nextBagOrder=true;setScreen('work','sort');beep();
+  BagPour.layout(offer.loot,{existing:state.bag.filter(x=>!offer.loot.includes(x))});
+  for(const x of offer.loot)x.depth=++depth;
+  if(!INTRO_TIMING[state.day]&&!allOrders().some(o=>o.accepted===false)&&(!allOrders().length||state.offers.length||state.schedule.length))state.nextBagOrder=true;
+  if(!options.background){setScreen('work','sort');BagPour.start(offer.loot.map(x=>x.uid));}
+  else render();
+  showGoldSpend(offer.price);save();beep();return true;
 }
 function advanceReadyVisitor(dt){
   if(Story.enabled())return;
@@ -353,7 +373,7 @@ function renderWork(){
   }
   renderChecklist();hidden('autoSortButton',!sort);$('autoSortButton').disabled=!state.bag.length||state.autoSorting;
   hidden('sweepButton',!sort||!state.upgrade);$('sweepButton').disabled=!state.bag.length;
-  hidden('sortingDone',true);renderOrderBoard();updateHud();Story.render();
+  hidden('sortingDone',true);renderOrderBoard();updateHud();Story.render();BagPour.render();
 }
 function renderShelves(){
   $('shelves').innerHTML='';
@@ -369,7 +389,7 @@ function renderShelves(){
   for(let i=0;i<5;i++){const ghost=document.createElement('div');ghost.className='shelf-box shelf-placeholder';ghost.setAttribute('aria-hidden','true');ghost.innerHTML=`<img class="boxart" src="${asset('storage/crate')}" alt="">`;upper.append(ghost);}
 }
 function selectBox(cat){
-  if(state.paused||state.autoSorting)return;
+  if(state.paused||state.autoSorting||BagPour.active())return;
   if(state.inspectCat==='junk'){state.targetCat=cat;renderTarget();return;}
   if(state.selected!==null){sortItem(state.selected,cat);return;}
   if(state.mode==='order'){state.activeCat=cat;renderWork();}else openInspection(cat);
@@ -382,7 +402,26 @@ function renderChecklist(){
   else if(orderComplete())button(actions,'Выдать посылку',finishOrder,'ship').className='primary dispatch-ready';
   else button(actions,'Вернуться к сортировке',()=>setScreen('work','sort'),'backSort');
 }
-function itemPositionKey(kind){return kind==='table'?'tablePos':kind==='packed'?'parcelPos':'boxPos';}
+function itemPositionKey(kind){return kind==='table'?'tablePos':kind==='packed'?'parcelPos':kind==='source'?'sourcePos':'boxPos';}
+function repairBoxLayout(list,area,kind){
+  if(kind==='table')return false;
+  const key=itemPositionKey(kind),width=Math.max(100,area.clientWidth||450),columns=Math.max(1,Math.floor((width-20)/68));
+  const maxY=Math.max(area.parentElement.clientHeight*2,Math.ceil(list.length/columns)*90+100);
+  let repaired=false;
+  list.forEach((x,i)=>{
+    const pos=x[key];
+    if(!pos||!Number.isFinite(pos.x)||!Number.isFinite(pos.y)||pos.x<0||pos.x>1||pos.y<0||pos.y>maxY){
+      x[key]={x:(i%columns)*68/Math.max(1,width-80),y:8+Math.floor(i/columns)*68};repaired=true;
+    }
+  });
+  return repaired;
+}
+function revealSourceContents(){
+  const area=$('sourceItems'),pane=$('sourceScroll');if(!area||!pane)return;
+  const nodes=[...area.querySelectorAll('.item')];if(!nodes.length)return;
+  const visible=nodes.some(node=>node.offsetTop+node.offsetHeight>pane.scrollTop&&node.offsetTop<pane.scrollTop+pane.clientHeight);
+  if(!visible)pane.scrollTop=Math.max(0,Math.min(...nodes.map(node=>node.offsetTop))-8);
+}
 function arrangeBox(area,list,kind){
   if(state.paused||state.autoSorting)return;
   const width=area.clientWidth,size=60,columns=Math.max(1,Math.floor((width-20)/68)),key=itemPositionKey(kind);
@@ -397,6 +436,7 @@ function renderItems(area,list,kind){
   if(!list.length){if(kind!=='table')area.style.height='100%';area.innerHTML='<div class="empty-pile">Здесь пока пусто</div>';return;}
   const table=kind==='table',size=table?79:60,width=area.clientWidth||450,columns=Math.max(1,Math.floor((width-20)/68));
   const key=itemPositionKey(kind);
+  if(!table&&repairBoxLayout(list,area,kind))save();
   list.forEach((x,i)=>{
     if(!table&&!x[key])x[key]={x:(i%columns)*68/Math.max(1,width-size-20),y:8+Math.floor(i/columns)*68};
     const pos=table?(x.tablePos||{x:Math.random()*.8,y:Math.random()*.7}):x[key];
@@ -411,13 +451,14 @@ function renderItems(area,list,kind){
     }
     b.innerHTML=`<img src="${asset(items[x.type].sprite)}" alt="${unknown?'Неизвестная находка':items[x.type].name}" draggable="false">${unknown?'<span class="mystery-question">?</span>':''}`;
     b.style.left=(10+pos.x*Math.max(1,width-size-20))+'px';b.style.top=(table?10+pos.y*Math.max(1,area.clientHeight-size-20):pos.y)+'px';
-    b.style.transform=`rotate(${!table&&x.boxAngle!==undefined?x.boxAngle:x.uid%21-10}deg)`;b.style.zIndex=x.depth||i+1;
+    b.style.transform=`rotate(${table&&x.tableAngle!==undefined?x.tableAngle:!table&&x.boxAngle!==undefined?x.boxAngle:x.uid%21-10}deg)`;b.style.zIndex=x.depth||i+1;
     b.onpointerdown=e=>pointerDown(e,x,b,kind);
   });
   if(!table)area.style.height=Math.max(area.parentElement.clientHeight,...list.map(x=>x[key].y+size+12))+'px';
+  if(kind==='source')revealSourceContents();
 }
 function clickItem(x,kind,e){
-  if(state.paused||state.autoSorting)return;
+  if(state.paused||state.autoSorting||BagPour.active())return;
   if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
   if(isUnknown(x)){cancelDrag();openUnknown(x);return;}
   if(Story.enabled())Dwarf.release(x.uid);
@@ -443,7 +484,7 @@ function rewardSortedItem(uid){
 }
 function wrong(message,el){state.dayErrors++;state.combo=0;toast(message);beep(true);el?.classList.add('shake');setTimeout(()=>el?.classList.remove('shake'),280);save();}
 function sortItem(uid,cat){
-  if(state.paused||state.autoSorting)return;
+  if(state.paused||state.autoSorting||BagPour.active())return;
   const list=state.inspectCat==='junk'?state.junk:state.bag;const i=list.findIndex(x=>x.uid===uid);if(i<0)return;
   if(isUnknown(list[i])){openUnknown(list[i]);return;}
   const x=list[i],it=items[x.type];if(it.cat!==cat){wrong(`«${it.name}» — ${categories[it.cat].name.toLowerCase()}. Попробуйте другую коробку.`,document.querySelector(`[data-cat="${cat}"]`));return;}
@@ -456,7 +497,7 @@ function packItem(uid){
   if(Story.enabled()&&!Goblin.canUse(uid,state.order.id)){toast('Этот экземпляр зарезервирован другой посылке. Договорённость можно вернуть себе в книге.');return;}
   if(isUnknown(x)){openUnknown(x);return;}
   const line=state.order.recipe.find(r=>r.type===x.type&&remaining(r)>0);if(!line){wrong('Эта вещь сейчас не нужна. Она остаётся в коробке.',$('parcelDrop'));return;}
-  state.stock.splice(i,1);state.order.packed.push(x);if(Story.enabled())Goblin.reconcile();if(orderComplete()){state.activeCat=null;state.inspectCat=null;hidden('inspector',true);hidden('targetPreview',true);}const scroll=$('sourceScroll')?.scrollTop||0;renderWork();if($('sourceScroll'))$('sourceScroll').scrollTop=scroll;beep();save();
+  state.stock.splice(i,1);state.order.packed.push(x);if(Story.enabled())Goblin.reconcile();if(orderComplete()){state.activeCat=null;state.inspectCat=null;hidden('inspector',true);hidden('targetPreview',true);}const scroll=$('sourceScroll')?.scrollTop||0;renderWork();if($('sourceScroll'))$('sourceScroll').scrollTop=scroll;revealSourceContents();beep();save();
 }
 function renderOrderBoard(){
   const board=$('orderBoard');if(!board)return;
@@ -479,7 +520,7 @@ function openOrder(candidate){if(!state.started||state.paused||state.autoSorting
   const head=counterGuest();
   const o=candidate?.recipe?candidate:(head?.kind==='order'?head.value:allOrders().find(o=>o.accepted!==false));
   if(!o){toast('Новый заказ появится после покупки следующего мешка.');return;}
-  if(Story.enabled()&&Goblin.isAssigned(o)){Contracts.openBook();return;}
+  if(Story.enabled()&&Goblin.isAssigned(o)){if(o.regularKey)Contracts.openBook();else Story.showBusiness();return;}
   if(o.accepted===false&&(head?.kind!=='order'||head.value!==o)){toast('Этот посетитель ждёт своей очереди.');return;}
   if(o.accepted!==false){state.order=o;if(Story.enabled())Goblin.reconcile();setScreen('work','order');save();return;}
   setScreen('reception','sort');
@@ -530,7 +571,7 @@ function renderTarget(){
 }
 function closeInspection(){cancelDrag();state.inspectCat=null;state.selected=null;hidden('inspector',true);hidden('targetPreview',true);renderWork();}
 function pointerDown(e,x,node,kind){
-  if(e.button!==0||state.paused||state.autoSorting)return;
+  if(e.button!==0||state.paused||state.autoSorting||BagPour.active())return;
   if(state.inspectCat!==null&&!['inspect','junk','target'].includes(kind))return;
   if(Story.enabled())Dwarf.release(x.uid);
   const r=node.getBoundingClientRect();drag={uid:x.uid,item:x,node,kind,x:e.clientX,y:e.clientY,grabX:(e.clientX-r.left)/scale,grabY:(e.clientY-r.top)/scale,active:false};node.setPointerCapture(e.pointerId);
@@ -614,7 +655,7 @@ function openUpgrade(){
 function sweep(){if(!state.upgrade||state.paused||!state.bag.length)return;state.bag.forEach(x=>{delete x.boxPos;state.junk.push(x);});state.bag=[];state.selected=null;render();save();beep();toast('Стол свободен. Несортированное ждёт в «Диковинках».');}
 function rarity(type){return type===17||type===23?'Легендарная':type===15||type===28?'Эпическая':type%5===0?'Редкая':'Простая';}
 function openUnknown(x){
-  if(state.paused||state.autoSorting||!isUnknown(x))return;
+  if(state.paused||state.autoSorting||BagPour.active()||!isUnknown(x))return;
   openCleaning(x.type,x);
 }
 function recognizeItem(type,instance){
@@ -637,8 +678,9 @@ function openCleaning(type,instance=owned().find(x=>x.type===type&&isUnknown(x))
   const it=items[type],done=state.collection.includes(type);
   modal(`<h2 id="recognitionTitle">${done?it.name:'Изучение находки'}</h2><p>${done?'Вы распознали эту находку и записали её название в атлас.':'Зажмите левую кнопку мыши и водите по предмету, чтобы стереть налёт. Или нажимайте «Распознать».'}</p><div class="clean-stage"><img src="${asset(it.sprite)}" alt="${done?it.name:'Неизученная находка'}"><canvas id="dirt" width="360" height="270" aria-label="Стирайте налёт с находки"></canvas></div><div class="clean-meter"><i id="cleanBar" style="width:${done?100:0}%"></i></div><p id="cleanStatus">${done?'✓ Распознано: '+it.name:'Очищено 0%'}</p><div class="modal-actions recognition-actions"><button id="cleanKey" class="primary" title="Очистить следующий участок предмета">Распознать</button><button id="stashUnknown" ${!instance||!isUnknown(instance)||!state.upgrade||state.junk.includes(instance)?'disabled':''}>Отложить в Диковинки</button><button id="backCollection">К коллекции</button></div>`);
   const canvas=$('dirt'),ctx=canvas.getContext('2d',{willReadFrequently:true});let down=false,complete=done,strokes=0;
+  modalCleanup=()=>{recognitionFeedback=null;};
   if(!done){ctx.fillStyle='#736650';ctx.fillRect(0,0,360,270);for(let i=0;i<150;i++){ctx.fillStyle=i%2?'#8f7d60':'#5d513f';ctx.beginPath();ctx.arc(Math.random()*360,Math.random()*270,rand(1,5),0,7);ctx.fill();}}
-  function check(){if(complete)return;const data=ctx.getImageData(0,0,360,270).data;let clear=0;for(let i=3;i<data.length;i+=16)if(data[i]<50)clear++;const pct=Math.round(clear/(data.length/16)*100);$('cleanBar').style.width=pct+'%';$('cleanStatus').textContent=`Очищено ${pct}%`;if(pct>=85){complete=true;ctx.clearRect(0,0,360,270);recognizeItem(type,instance);$('cleanBar').style.width='100%';$('recognitionTitle').textContent=it.name;$('cleanKey').disabled=true;$('cleanKey').textContent='Распознано';$('stashUnknown').disabled=true;render();if(state.inspectCat!==null)renderInspection();save();beep();}}
+  function check(){if(complete)return;const data=ctx.getImageData(0,0,360,270).data;let clear=0;for(let i=3;i<data.length;i+=16)if(data[i]<50)clear++;const pct=Math.round(clear/(data.length/16)*100);$('cleanBar').style.width=pct+'%';$('cleanStatus').textContent=`Очищено ${pct}%`;if(pct>=85){complete=true;ctx.clearRect(0,0,360,270);recognizeItem(type,instance);$('cleanBar').style.width='100%';$('recognitionTitle').textContent=it.name;$('cleanKey').disabled=true;$('cleanKey').textContent='Распознано';$('stashUnknown').disabled=true;$('backCollection').classList.add('hidden');recognitionFeedback={elapsed:0,title:$('recognitionTitle')};render();if(state.inspectCat!==null)renderInspection();save();beep();}}
   function erase(x,y){if(complete)return;ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(x,y,33,0,Math.PI*2);ctx.fill();check();}
   function point(e){const r=canvas.getBoundingClientRect();erase((e.clientX-r.left)/r.width*360,(e.clientY-r.top)/r.height*270);}
   canvas.onpointerdown=e=>{down=true;canvas.setPointerCapture(e.pointerId);point(e);};canvas.onpointermove=e=>{if(down)point(e);};canvas.onpointerup=canvas.onpointercancel=()=>down=false;
@@ -656,7 +698,7 @@ function showGoldAd(){
   $('claimAdGold').onclick=()=>{if(!ready||claimed)return;claimed=true;gainGold(15,$('claimAdGold'));closeModal();render();save();toast('За просмотр рекламы: +15 монет');};
 }
 async function autoSort(){
-  if(!state.started||state.paused||state.ended||state.autoSorting||state.tutorial?.active||state.screen!=='work'||state.mode!=='sort'||!state.bag.length)return;
+  if(!state.started||state.paused||state.ended||state.autoSorting||BagPour.active()||state.tutorial?.active||state.screen!=='work'||state.mode!=='sort'||!state.bag.length)return;
   cancelDrag();state.autoSorting=true;renderWork();lockBackground(true);
   try{
     const queue=state.bag.filter(x=>!isUnknown(x));
@@ -694,7 +736,7 @@ async function flyToShelf(item,cat){
   }finally{ghost.remove();source.style.opacity='';}
 }
 function hasSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));return s?.version===1&&s.started;}catch{return false;}}
-function loadGame(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s?.version!==1||!Array.isArray(s.stock)||!Array.isArray(s.bag))return;state={...freshState(),...s,paused:false,autoSorting:false,selected:null,inspectCat:null,activeCat:null};const repaired=repairTableLayout(state.bag);restoreOrders();depth=Math.max(100,...owned().map(x=>x.depth||0));render();if(Story.enabled())Story.afterLoad();else if(state.ended)showSummary();if(repaired)save();}catch{toast('Не удалось прочитать сохранение. Можно начать заново.');}}
+function loadGame(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s?.version!==1||!Array.isArray(s.stock)||!Array.isArray(s.bag))return;BagPour.afterLoad();City.close();state={...freshState(),...s,paused:false,autoSorting:false,selected:null,inspectCat:null,activeCat:null};const repaired=repairTableLayout(state.bag);restoreOrders();depth=Math.max(100,...owned().map(x=>x.depth||0));render();if(Story.enabled())Story.afterLoad();else if(state.ended)showSummary();if(repaired)save();}catch{toast('Не удалось прочитать сохранение. Можно начать заново.');}}
 function help(){if(state.paused)return;modal('<h2>Как работает лавка</h2><div class="rules"><b>Закупка.</b> Купите мешок за 10 монет. Содержимое заранее неизвестно.<br><b>Порядок.</b> Перетаскивайте вещи на полки. Или нажмите вещь, затем коробку. Ошибка подскажет категорию.<br><b>Заказ.</b> Листок справа. Недостающее появится в новых мешках. Откройте коробку и отправляйте нужное в посылку.<br><b>Диковинки.</b> За 20 монет купите временную коробку и убирайте остаток мешка одним действием.<br><b>Атлас.</b> Очистите находку и сохраните её изображение. Товар остаётся для продажи.<br><b>Вечер.</b> Новые приходы прекращаются; закончите дела и нажмите «Закончить день».</div>');}
 
 function setup(){
@@ -733,18 +775,27 @@ function setup(){
   $('sound').onclick=()=>{state.muted=!state.muted;beep();updateHud();save();};
   $('settings').onclick=openSettings;
   $('pause').onclick=()=>{if(state.paused||!state.started)return;modal('<h2>Лавка на паузе</h2><p>Часы остановлены. Все находки на своих местах.</p><button id="resume" class="primary">Продолжить</button>');$('resume').onclick=closeModal;};
-  Story.setup();
+  Story.setup();City.setup();if(typeof Guild!=='undefined')Guild.setup();
 }
 addEventListener('keydown',e=>{
   if(!$('modal').classList.contains('hidden')){
     if(e.key==='Escape'){e.preventDefault();closeModal();}
-    if(e.key==='Tab'){const buttons=[...$('modal').querySelectorAll('button:not(:disabled)')].filter(b=>!b.classList.contains('hidden'));const first=buttons[0],end=buttons.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();end?.focus();}else if(!e.shiftKey&&document.activeElement===end){e.preventDefault();first?.focus();}}
+    if(e.key==='Tab'){const buttons=[...$('modal').querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex="0"]')].filter(b=>!b.hidden&&!b.classList.contains('hidden')&&b.getClientRects().length);const first=buttons[0],end=buttons.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();end?.focus();}else if(!e.shiftKey&&document.activeElement===end){e.preventDefault();first?.focus();}}
     return;
   }
   if(state.autoSorting)return;
   if(e.key==='Escape'){if(drag){cancelDrag();return;}if(state.inspectCat!==null)closeInspection();else if(state.selected!==null){state.selected=null;renderWork();}else if(state.activeCat!==null){state.activeCat=null;renderWork();}else if(state.screen==='work')setScreen('reception');}
 });
 document.addEventListener('visibilitychange',()=>{last=performance.now();save();});addEventListener('pagehide',save);addEventListener('resize',()=>{resize();positionRecognition(drag?.ghost||$('heldRecognize')?.sourceNode);});
-function tick(now){const dt=Math.min(1,(now-last)/1000);last=now;if(state.started&&!state.paused&&!state.ended&&!state.autoSorting&&!document.hidden){if(Story.enabled())Story.advance(dt);else if(!state.tutorial?.active){state.seconds=Math.max(0,state.seconds-dt*(state.screen==='work'?CONFIG.workTimeRate:1));advanceVisitorGap(dt);tickArrivals();advanceReadyVisitor(dt);}updateHud();saveClock+=dt;if(saveClock>=5){saveClock=0;save();}}tutorialFrame();requestAnimationFrame(tick);}
+function tick(now){
+  const dt=Math.min(1,Math.max(0,(now-last)/1000));last=now;advanceRecognitionFeedback(dt);
+  if(state.started&&!state.paused&&!state.ended&&!state.autoSorting&&!document.hidden){
+    if(BagPour.active())BagPour.advance(dt);
+    else if(Story.enabled())Story.advance(dt);
+    else if(!state.tutorial?.active){state.seconds=Math.max(0,state.seconds-dt*(state.screen==='work'?CONFIG.workTimeRate:1));advanceVisitorGap(dt);tickArrivals();advanceReadyVisitor(dt);}
+    updateHud();saveClock+=dt;if(saveClock>=5){saveClock=0;save();}
+  }
+  tutorialFrame();requestAnimationFrame(tick);
+}
 
 setup();resize();render();requestAnimationFrame(tick);

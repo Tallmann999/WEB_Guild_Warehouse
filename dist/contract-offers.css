@@ -1,0 +1,52 @@
+/* Signed and postponed agreements remain beside the ordinary order leaflets. */
+#contractOfferBoard{position:absolute;right:274px;top:108px;z-index:20;display:grid;gap:10px;width:196px;padding:0}
+#contractOfferBoard .contract-offer-leaf{position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 5px;width:100%;min-height:99px;padding:9px 11px;text-align:left;color:#3d2c08;border:1px solid #f3c746;border-radius:2px;background:linear-gradient(115deg,#fff0a1,#e6bb48);box-shadow:0 0 15px #ffd95f66,1px 4px 7px #100b075e;transform:rotate(1deg)}
+#contractOfferBoard .contract-offer-leaf:nth-child(even){transform:rotate(-1deg)}
+#contractOfferBoard .contract-offer-leaf:hover{filter:brightness(1.06);transform:translateY(-2px) rotate(0)}
+.agreement-leaf-kind{grid-column:1/-1;color:#71540f;font:8px/1.2 Arial,sans-serif;letter-spacing:.8px}
+.agreement-urgent{display:inline-block;color:#473000;background:#ffd440;border:1px solid #ab720d;border-radius:2px;padding:2px 5px;font:700 10px/1 Arial,sans-serif;letter-spacing:1px;box-shadow:0 0 9px #ffd65e66}
+.contract-offer-leaf .agreement-urgent{position:absolute;right:6px;top:6px;font-size:8px;padding:2px 3px;letter-spacing:.6px}
+.contract-offer-leaf strong{font-size:17px;font-weight:600;line-height:1.1}
+.agreement-leaf-items{display:flex;gap:1px;justify-content:flex-end}
+.agreement-leaf-items img{width:22px;height:22px;object-fit:contain;pointer-events:none}
+.contract-offer-leaf small{grid-column:1/-1;font:12px/1.2 Arial,sans-serif;color:#594831}
+.contract-offer-leaf .agreement-leaf-compact{display:none}
+.contract-offer-leaf>b{grid-column:1/-1;font:600 13px/1.2 Georgia,serif;color:#495b2d}
+.contract-offer-leaf[data-contract-state="visiting"]{border-color:#ffe481;box-shadow:0 0 21px #ffdb627d,1px 4px 7px #100b075e}
+/* A narrow upper-right rail stays above the tabletop and beside the shelves. */
+#contractOfferBoard.work-agreements{right:24px;top:108px;width:180px;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#contractOfferBoard.work-agreements::before{content:"Договорённости";grid-column:1/-1;color:#d9c59e;font:12px/1 Arial,sans-serif;letter-spacing:.3px}
+#contractOfferBoard.work-agreements .contract-offer-leaf{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-height:54px;padding:6px;border-radius:2px;transform:none}
+#contractOfferBoard.work-agreements .agreement-leaf-kind,#contractOfferBoard.work-agreements .agreement-leaf-items{display:none}
+#contractOfferBoard.work-agreements .agreement-urgent{position:static;font-size:7px;padding:1px 3px;line-height:1.1}
+#contractOfferBoard.work-agreements .agreement-leaf-info{display:none}
+#contractOfferBoard.work-agreements .agreement-leaf-compact{display:block}
+#contractOfferBoard.work-agreements .contract-offer-leaf strong{font-size:13px;line-height:1.1}
+#contractOfferBoard.work-agreements .contract-offer-leaf small{font-size:9px;line-height:1.15;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#contractOfferBoard.work-agreements .contract-offer-leaf>b{font-size:10px;line-height:1.1}
+#game.has-agreement-board #work .work-heading{padding-right:222px}
+#game.has-agreement-board #orderBoard.work-orders{right:24px;top:203px;width:180px;max-height:119px;overflow-y:auto;overflow-x:hidden;padding:1px 2px 5px;scrollbar-width:thin;scrollbar-color:#af9665 #34291d55}
+#game.has-agreement-board #orderBoard.work-orders .order-card{min-height:54px;padding:6px 7px;font-size:13px;transform:none}
+#game.has-agreement-board #orderBoard.work-orders .order-card strong{font-size:13px}
+#game.has-agreement-board #orderBoard.work-orders .order-card small{font-size:10px}
+#game.has-agreement-board #orderBoard.work-orders .order-card img{width:19px;height:19px}
+#game.has-agreement-board #orderBoard.work-orders .order-card-action{font-size:11px}
+.contract-guest #speech p{font-size:15px;line-height:1.35}
+.contract-guest #speech h2{margin-bottom:7px}
+.contract-guest #notice{left:36px;top:350px;bottom:auto;width:300px;padding:8px 11px;border:1px solid #dcb84a;background:linear-gradient(115deg,#685019f0,#3d311bee);box-shadow:0 0 18px #ffda5c40;font-size:13px;line-height:1.2}
+.contract-guest #notice .agreement-urgent{float:right;margin:0 0 3px 6px}
+.contract-guest #notice>b{display:block;font-size:14px;margin-bottom:3px}
+.counter-contract-recipe{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:2px 0 3px}
+.counter-contract-recipe span{display:flex;align-items:center;justify-content:center;gap:4px}
+.counter-contract-recipe img{width:31px;height:31px;object-fit:contain}
+.counter-contract-recipe b{color:#eddaaa;font:16px Georgia,serif}
+.counter-contract-payment{display:block;color:#cfc09c;font:11px/1.25 Arial,sans-serif;white-space:nowrap}
+#receptionAction.contract-counter-actions button{font-size:15px;line-height:1.2;min-height:43px;padding:10px 12px}
+#contractOfferSheet .contract-recipe{margin:15px auto;max-width:330px;text-align:left}
+#contractOfferSheet #signOfferSheet{display:block;margin:17px auto 9px;font-size:17px}
+#contractOfferSheet #laterOfferSheet{font-size:15px;padding:8px 17px}
+#contractOfferSheet p{font-size:16px;line-height:1.45}
+#contractOfferSheet>.agreement-urgent{display:table;margin:0 auto 10px;font-size:12px}
+.regular-contracts article{background:linear-gradient(120deg,#79601b66,#55451d44);border-color:#e5be535e;box-shadow:0 0 13px #ffcf4524}
+.regular-contracts article>.agreement-urgent{align-self:flex-start}
+@media(prefers-reduced-motion:reduce){#contractOfferBoard .contract-offer-leaf{transition:none}}

@@ -1,0 +1,23 @@
+/* One wallet anchors every reward, purchase and scene in the same place. */
+#game>header{gap:22px;padding:3px 24px;z-index:95}
+#modal:not(.order-brief){padding-top:77px}
+#game>header #goldWallet{position:relative;display:flex;flex:0 0 340px;align-items:center;gap:13px;margin:0;min-width:0;height:68px;text-align:left}
+#game>header #walletIcon{width:51px;height:51px;object-fit:contain;filter:drop-shadow(0 3px 2px #110b07a3)}
+#game>header #gold{font-size:69px;font-weight:700;line-height:.95;letter-spacing:-1.5px;font-variant-numeric:tabular-nums;color:#ffe2a0;text-shadow:0 3px 1px #593819,0 0 17px #ffcf6530}
+#game>header .day{margin-left:auto;flex:0 0 240px}
+#game>header .rep{margin-left:0;min-width:145px}
+#goldWallet .wallet-change{position:absolute;left:236px;top:17px;font:bold 31px/1 Arial,sans-serif;letter-spacing:-1px;white-space:nowrap;pointer-events:none;text-shadow:0 2px 2px #210d0a,0 0 5px #260b05}
+#goldWallet .wallet-change.spending{color:#ff7972}
+.dwarf-interview-portrait{display:block;width:180px;height:210px;object-fit:contain;margin:0 auto 8px;filter:drop-shadow(0 8px 8px #160f0966)}
+.dwarf-interview-actions{display:flex;gap:12px;justify-content:center;align-items:stretch;margin-top:20px}
+.dwarf-interview-actions button{flex:1;font-size:17px;padding:12px 16px}
+.modal-card:has(.dwarf-interview){width:780px;padding:27px 34px 29px}
+#dwarfEncounter{display:grid;grid-template-columns:180px 1fr;column-gap:27px;text-align:left;align-items:center}
+#dwarfEncounter>.dwarf-interview-portrait{grid-column:1;grid-row:1/4;width:180px;height:270px;margin:0}
+#dwarfEncounter>.brief-eyebrow{grid-column:2;align-self:end}
+#dwarfEncounter>h2{grid-column:2;align-self:start;margin:8px 0 3px;font-size:32px}
+#dwarfEncounter>p{grid-column:2;margin:6px 0 12px;font-size:18px;line-height:1.5}
+#dwarfEncounter>.dwarf-interview-actions{grid-column:1/-1;margin-top:19px}
+#dwarfEncounter .dwarf-interview-actions button{font-size:16px;line-height:1.25;padding:12px 14px}
+.recognition-actions:has(#cleanKey:disabled) #stashUnknown{display:none}
+.story-mode #reception .roomlabel{display:none}

@@ -60,7 +60,7 @@
 .story-business-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;text-align:left;margin-top:21px}
 .story-business-grid>article{position:relative;display:flex;flex-direction:column;padding:21px 22px 18px;background:linear-gradient(150deg,#74603d33,#1c191244);border:1px solid #aa8c4d44;border-radius:6px}
 .story-business-grid>article:first-child::before{content:"✦";font-size:29px;color:#d5b271;margin-bottom:7px;line-height:1}
-.story-business-grid>article:nth-child(2)::before{content:"";position:absolute;right:12px;top:10px;width:73px;height:86px;background:url('assets/dwarf-sorter.png') center/contain no-repeat;opacity:.92;pointer-events:none}
+.story-business-grid>article:nth-child(2)::before{content:"";position:absolute;right:12px;top:10px;width:73px;height:86px;background:url('assets/dwarf-borin-redhat.png') center/contain no-repeat;opacity:.92;pointer-events:none}
 .story-business-grid h3{font-size:21px;line-height:1.2;color:#ecd3a0;font-weight:600;margin:0 0 11px;max-width:235px}
 .story-business-grid>article:nth-child(2) h3{padding-right:30px}
 .story-business-grid p{font-size:15px!important;line-height:1.5!important;color:#d8c8ab!important;margin:0 0 18px!important;min-height:112px}
@@ -108,3 +108,13 @@
 .contract-lock{color:#e5ca92}
 .order-card.goblin-order .order-card-action{color:#556a32}
 .story-mode footer nav #contractsNav{font-size:14px;padding:10px}
+
+/* A saved-clock carrier, two ingredient heights tall. It never owns inventory. */
+#dwarfCarrier,#dwarfPickupSpot{position:absolute;z-index:9;pointer-events:none;user-select:none;transition:none!important}
+#dwarfCarrier .dwarf-carrier-body{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scaleX(var(--carrier-face,1));filter:drop-shadow(0 4px 3px #160e0870)}
+.dwarf-carrier-item{position:absolute;left:var(--carrier-hand,81%);top:51%;transform:translate(-50%,-50%) scale(var(--drop-scale,1));filter:drop-shadow(0 3px 2px #1b10099a)}
+.dwarf-carrier-item img,#dwarfPickupSpot img{width:100%;height:100%;object-fit:contain}.dwarf-carrier-item i{display:none}
+#dwarfCarrier.unknown .dwarf-carrier-item img,#dwarfPickupSpot.unknown img{filter:brightness(.08)}
+#dwarfCarrier.unknown .dwarf-carrier-item i{position:absolute;inset:0;display:grid;place-items:center;font:bold 30px Arial;color:#fff2cf;font-style:normal;text-shadow:0 1px 4px #000}
+#dwarfPickupSpot small{display:block;font-size:11px;text-align:center;color:#ead8ae;white-space:nowrap;background:#2b281edc;padding:3px 6px;border-radius:4px}
+.item.dwarf-carried{opacity:0!important;pointer-events:none}

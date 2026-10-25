@@ -1,0 +1,8 @@
+/* The sack is a foreground sprite; the moving goods remain their real buttons. */
+#bagPourScene{position:absolute;width:220px;height:167px;z-index:75;pointer-events:none;isolation:isolate}
+#bagPourScene[hidden]{display:none}
+.bag-pour-sack{position:relative;width:100%;height:100%;transform-origin:67% 65%;will-change:transform,opacity;filter:drop-shadow(0 9px 6px #1c100c66)}
+.bag-pour-sack img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
+.bag-pouring #pile .item[data-pouring]{pointer-events:none;will-change:transform,opacity;transition:none;animation:none}
+.bag-pouring #pile .item[data-pouring]:hover{filter:drop-shadow(2px 4px 3px #160e0980)}
+.bag-pouring #workHint{color:#e7cf9e}
