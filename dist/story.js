@@ -4,6 +4,7 @@
 // It never copies stock into an order: every item keeps its original uid.
 const Story = (()=>{
   const VERSION=1, REPAIR_COST=30, HIRE_COST=120, FOOD=38, VISIT_SECONDS=2;
+  const EARLY_VISITS=['supplier','customer','supplier','supplier','customer'];
   const enabled=()=>!!state.story;
   function ensure(){
     if(!enabled())return null;
@@ -36,6 +37,8 @@ const Story = (()=>{
     s.secondDaySupplyRun??=0;s.earlySupplyRun??=0;
     if(state.dwarf?.hired){s.dwarfEncounterSeen=true;s.dwarfEncounterPending=false;}
     s.goblinEncounterSeen??=false;s.goblinEncounterPending??=false;
+    // An old unpresented invitation below the new threshold must not stop trade.
+    if(!state.goblin?.hired&&!s.goblinEncounterSeen&&!s.goblinEncounterPresented&&state.gold<Goblin.OFFER_GOLD)s.goblinEncounterPending=false;
     if(state.goblin?.hired){s.goblinEncounterSeen=true;s.goblinEncounterPending=false;}
     if(!s.sortingGate&&state.bag.length)s.sortingGate={uids:state.bag.map(x=>x.uid),day:state.day,ordinal:state.day===2?s.secondDayPurchases:s.firstDayPurchases};
     if(s.restored||s.restoration)s.firstDayComplete=true;
@@ -46,6 +49,16 @@ const Story = (()=>{
     }
     if(secondDay())state.seconds=Math.max(0,CONFIG.daySeconds*(1-Math.min(1,(s.secondDayDeliveries+Math.min(3,s.secondDaySupplyRun)/3)/2)));
     s.lastVisitKind??=s.lastWasOrder?'customer':'supplier';
+    if(usesVisitRhythm()&&s.earlyVisitVersion!==1){
+      // Keep old queued guests. Translate completed old supply runs into the
+      // next matching slot, then account for an already waiting invitation.
+      const run=Math.max(0,Math.floor(Number(s.earlySupplyRun)||0));
+      let index=s.forceSupplier?0:run>=2?4:run===1?1:s.lastVisitKind==='customer'?2:0;
+      const waiting=[...(state.offers||[]).map(o=>({kind:'supplier',serial:o.arrivalSerial||0})),...(state.orders||[]).filter(o=>!o.regularKey&&o.accepted===false).map(o=>({kind:'customer',serial:o.arrivalSerial||0}))].sort((a,b)=>a.serial-b.serial);
+      for(const guest of waiting)if(EARLY_VISITS[index]===guest.kind)index=(index+1)%EARLY_VISITS.length;
+      s.earlyVisitIndex=index;s.earlyVisitVersion=1;
+    }
+    if(s.earlyVisitVersion===1)s.earlyVisitIndex=((Math.floor(Number(s.earlyVisitIndex)||0)%EARLY_VISITS.length)+EARLY_VISITS.length)%EARLY_VISITS.length;
     state.unknownTray??=[];state.orders??=[];state.schedule=[];state.orderSchedule=[];state.nextBagOrder=false;
     state.timingVersion=2;state.lootVersion=1;state.queueVersion=1;state.arrivalPacingVersion=3;Contracts.ensure();Restoration.ensure();if(typeof Automation!=='undefined')Automation.ensure();
     return s;
@@ -77,6 +90,12 @@ const Story = (()=>{
   }
   function secondDay(){return !!state.story?.secondDayActive&&state.day===2;}
   function earlyTrade(){return state.day>=2&&!state.city?.towerOwned;}
+  function usesVisitRhythm(){return state.day>=3&&earlyTrade();}
+  function recordVisit(kind){
+    const s=state.story;
+    // Exceptional cash/stock recovery does not consume the waiting slot.
+    if(usesVisitRhythm()&&EARLY_VISITS[s.earlyVisitIndex]===kind)s.earlyVisitIndex=(s.earlyVisitIndex+1)%EARLY_VISITS.length;
+  }
   function observeSorting(){
     const s=state.story,gate=s?.sortingGate;if(!gate)return false;
     if(gate.uids.some(uid=>state.bag.some(x=>x.uid===uid)))return false;
@@ -87,8 +106,8 @@ const Story = (()=>{
   function secondDayMilestones(){
     const s=state.story;if(!secondDay())return false;
     if(!state.dwarf?.hired&&!s.dwarfEncounterSeen&&s.secondDaySorted>=2&&s.secondDayDeliveries>=1)s.dwarfEncounterPending=true;
-    const ordinaryPending=allOrders().some(o=>!o.regularKey||o.accepted===false),suppliesDone=!s.secondDayChefFlow||s.secondDayPurchases>=6;
-    if(s.secondDayDeliveries>=2&&suppliesDone&&!state.bag.length&&!ordinaryPending&&!visitorQueue().length){s.secondDayComplete=true;s.secondDayEndPending=true;}
+    const ordinaryPending=allOrders().some(o=>!o.regularKey||o.accepted===false);
+    if(s.secondDayDeliveries>=2&&!state.bag.length&&!ordinaryPending&&!visitorQueue().length){s.secondDayComplete=true;s.secondDayEndPending=true;}
     if(state.paused||state.autoSorting||drag||document.hidden||!$('modal').classList.contains('hidden'))return false;
     if(s.dwarfEncounterPending){showDwarfEncounter();return true;}
     if(s.secondDayEndPending){showSecondDayEnd();return true;}
@@ -124,14 +143,16 @@ const Story = (()=>{
   }
   function goblinMilestones(){
     const s=state.story;if(!s||state.goblin?.hired||s.goblinEncounterSeen||!Goblin.eligible())return false;
-    if(!s.goblinEncounterPending){if(state.gold<240)return false;s.goblinEncounterPending=true;save();}
+    if(!s.goblinEncounterPresented&&state.gold<Goblin.OFFER_GOLD){if(s.goblinEncounterPending){s.goblinEncounterPending=false;save();}return false;}
+    if(!s.goblinEncounterPending){s.goblinEncounterPending=true;save();}
     if(state.paused||state.autoSorting||state.tutorial?.active||drag||state.selected!==null||document.hidden||state.bag.length||s.sortingGate||visitorQueue().length||Contracts.activeOffer?.()||typeof BagPour!=='undefined'&&BagPour.active()||typeof City!=='undefined'&&City.isOpen()||!$('modal').classList.contains('hidden')||state.screen==='work'&&state.mode==='order')return false;
     return showGoblinEncounter();
   }
   function showGoblinEncounter(){
     const s=state.story;if(!s?.goblinEncounterPending||state.goblin?.hired)return false;
+    s.goblinEncounterPresented=true;
     state.screen='reception';state.mode='sort';render();
-    modal('<div id="goblinEncounter" class="staff-interview"><img class="staff-interview-portrait" src="assets/goblin-grik-packer.png" alt="Грик, гоблин-комплектовщик"><span class="brief-eyebrow">ГОСТЬ В ПОИСКАХ РАБОТЫ</span><h2>Грик</h2><p>Вы уже освоились с Борином. Я люблю аккуратно собирать и выдавать посылки. Найм стоит 240 монет. Сразу возьму первую посылку, а на остальных листках вы сможете выбрать, кто собирает.</p><div class="staff-interview-actions"><button id="acceptGoblin" class="primary" '+(state.gold<240?'disabled':'')+'>Взять на работу · 240 монет</button><button id="declineGoblin">Отказаться и отпустить Грика</button></div>'+(state.gold<240?'<p>Можно нанять Грика позже в улучшениях, когда накопите 240 монет.</p>':'')+'</div>',{locked:true});
+    modal('<div id="goblinEncounter" class="staff-interview"><img class="staff-interview-portrait" src="assets/goblin-grik-packer.png" alt="Грик, гоблин-комплектовщик"><span class="brief-eyebrow">ГОСТЬ В ПОИСКАХ РАБОТЫ</span><h2>Грик</h2><p>Вы уже освоились с Борином. Я люблю аккуратно собирать и выдавать посылки. Найм стоит 240 монет. Сразу возьму первую посылку, а на остальных листках вы сможете выбрать, кто собирает.</p><div class="staff-interview-actions"><button id="acceptGoblin" class="primary" '+(state.gold<240?'disabled':'')+'>Взять на работу · 240 монет</button><button id="declineGoblin">Пока без помощника</button></div>'+(state.gold<240?'<p>Можно нанять Грика позже в улучшениях, когда накопите 240 монет.</p>':'')+'</div>',{locked:true});
     $('acceptGoblin').onclick=()=>{
       if(!Goblin.canHire())return;
       forceCloseModal();if(!hireGoblin())return;
@@ -139,7 +160,7 @@ const Story = (()=>{
     };
     $('declineGoblin').onclick=()=>{
       s.goblinEncounterPending=false;s.goblinEncounterSeen=true;s.goblinEncounterChoice='declined';
-      forceCloseModal();render();save();showBusiness();
+      forceCloseModal();render();save();toast('Грик ждёт в улучшениях. Найм за 240 монет откроет путь к автоматизации лавки.');
     };
     save();return true;
   }
@@ -150,7 +171,7 @@ const Story = (()=>{
   }
   function createOrder(keepSelection=true){
     const s=ensure();if(!s||allOrders().length>=4||allOrders().some(o=>o.accepted===false))return false;
-    if(secondDay()&&(s.regularContracts?.chef?.signed||s.secondDayDeliveries>=2||s.secondDaySupplyRun<3||state.bag.length||s.sortingGate))return false;
+    if(secondDay()&&(s.secondDayDeliveries>=2||s.secondDaySupplyRun<3||state.bag.length||s.sortingGate))return false;
     if(!s.restored&&!s.firstDayComplete&&s.firstPaid&&(s.firstDayPurchases<2||state.bag.length))return false;
     const first=!s.firstPaid&&!allOrders().length;
     let recipe,customer,title,description;
@@ -181,13 +202,14 @@ const Story = (()=>{
     const active=state.order,reward=first?40:state.dwarf?.hired?90:60;
     const order={id:state.orderUid=(state.orderUid||0)+1,recipe,packed:[],accepted:false,customer,reward,originalReward:reward,createdDay:state.day,carried:false,title,description,storyOrder:true,arrivalSerial:state.arrivalSerial=(state.arrivalSerial||0)+1};
     state.orders.push(order);state.order=keepSelection&&active?active:order;s.ordersCreated=(s.ordersCreated||0)+1;state.dayOrdersCreated=(state.dayOrdersCreated||0)+1;
+    recordVisit('customer');
     if(earlyTrade())s.earlySupplyRun=0;
     return true;
   }
   function makeSupply(){
     const s=state.story,index=s.supplyCount||0;
     if(typeof Automation!=='undefined'&&Automation.resumeDeferredSupplier?.())return true;
-    if(secondDay()&&(s.regularContracts?.chef?.signed?s.secondDayPurchases>=6:s.secondDayDeliveries>=2||s.secondDaySupplyRun>=3))return false;
+    if(secondDay()&&(s.secondDayDeliveries>=2||s.secondDaySupplyRun>=3))return false;
     const required=10+(typeof Automation!=='undefined'&&Automation.processingReserve?Automation.processingReserve():state.dwarf?.hired&&state.dwarf.enabled?2:0);
     const credit=state.gold<required&&!(s.supplierDebt>0)&&(typeof Automation==='undefined'||!Automation.canUseSupplierCredit||Automation.canUseSupplierCredit());
     if(state.gold<required&&!credit)return false;
@@ -196,6 +218,7 @@ const Story = (()=>{
     let unknownCount=0;
     const loot=types.map(type=>{const x=makeItem(type);x.unknown=!lesson&&unknownCount<unknownBudget&&mysteryType(type)&&!state.collection.includes(type);if(x.unknown)unknownCount++;return x;});
     state.offers.push({visitor:(index+1)%adventurers.length,loot,theme,price:credit?0:10,qualityRolled:true,credit:credit?10:0,arrivalSerial:state.arrivalSerial=(state.arrivalSerial||0)+1});
+    recordVisit('supplier');
     s.lastSupplyTypes=types.slice();s.supplyCount++;
     return true;
   }
@@ -212,8 +235,7 @@ const Story = (()=>{
     if(secondDay()){
       if(s.dwarfEncounterPending||s.secondDayEndPending||s.secondDayComplete||visitorQueue().length||allOrders().some(o=>!o.regularKey||o.accepted===false))return;
       let changed=false;
-      if(s.regularContracts?.chef?.signed){changed=makeSupply();if(changed)s.lastVisitKind='supplier';}
-      else if(s.secondDaySupplyRun>=3){changed=createOrder();if(changed)s.lastVisitKind='customer';}
+      if(s.secondDaySupplyRun>=3){changed=createOrder();if(changed)s.lastVisitKind='customer';}
       else if(s.secondDayDeliveries<2){
         changed=makeSupply();if(changed){s.lastVisitKind='supplier';if(s.forceSupplier)state.offers[0].openingDay=true;s.forceSupplier=false;}
       }
@@ -239,11 +261,12 @@ const Story = (()=>{
       return;
     }
     // One person at the counter. Accepted leaflets do not occupy that counter.
-    const orderCount=allOrders().filter(o=>o.accepted!==false).length;
+    const orderCount=allOrders().filter(o=>!o.regularKey&&o.accepted!==false).length;
     let changed=false;
     const supply=()=>{if(state.offers.length||state.bag.length>=24)return false;const ok=makeSupply();if(ok)s.lastVisitKind='supplier';return ok;};
     const customer=()=>{if(orderCount>=2||!available().length)return false;const ok=createOrder();if(ok)s.lastVisitKind='customer';return ok;};
-    if(earlyTrade())changed=s.earlySupplyRun>=3?customer()||supply():supply()||customer();
+    if(usesVisitRhythm())changed=EARLY_VISITS[s.earlyVisitIndex]==='customer'?customer()||supply():supply()||customer();
+    else if(earlyTrade())changed=s.earlySupplyRun>=3?customer()||supply():supply()||customer();
     else if(s.lastVisitKind==='customer')changed=supply()||customer();
     else changed=customer()||supply();
     s.nextVisit=VISIT_SECONDS;
@@ -262,7 +285,8 @@ const Story = (()=>{
     const sortingFinished=observeSorting();
     s.elapsed+=dt;if(!sortingFinished)s.nextVisit=Math.max(0,s.nextVisit-dt);
     // The first day follows two trades, without a waiting timer. Later days use
-    // the regular active clock; reading and the repair scene remain paused.
+    // the regular active clock; background reading keeps it running, while
+    // consequential dialogs and the repair scene suspend ordinary trade.
     if(s.restored&&!secondDay()){
       state.seconds=Math.max(0,state.seconds-dt);
       if(state.seconds<=0){state.seconds=CONFIG.daySeconds;state.day++;state.dayIncome=state.daySpent=state.dayOrders=state.dayBought=0;state.dayCollectionStart=state.collection.length;}
@@ -287,7 +311,7 @@ const Story = (()=>{
   function onOrderDelivered(order,origin='manual'){
     const s=ensure();if(!s)return;const first=!s.firstPaid;s.deliveries++;s.firstPaid=true;
     if(!s.restored&&!s.firstDayComplete&&origin==='manual')s.firstDayDeliveries=Math.min(2,s.firstDayDeliveries+1);
-    if(secondDay()&&origin==='manual'){s.secondDayDeliveries++;s.secondDaySupplyRun=0;}
+    if(secondDay()&&!order?.regularKey){s.secondDayDeliveries++;s.secondDaySupplyRun=0;}
     if(first){s.forceSupplier=true;s.nextVisit=VISIT_SECONDS;}
     if(state.dwarf?.hired&&origin==='manual')s.manualAfterDwarf++;
     Contracts.onDelivery(order);Goblin.reconcile();
@@ -312,16 +336,16 @@ const Story = (()=>{
     if(!s.restored&&!s.firstDayComplete)return ['ПЕРВЫЙ РАБОЧИЙ ДЕНЬ','Ещё одна поставка и посылка','Примите второй мешок, разберите его и выдайте вторую посылку. Затем восстановим лавку.'];
     if(!s.restored)return ['ИТОГИ ПЕРВОГО ДНЯ','Вернуть лавке былой вид','День завершён. В итогах можно восстановить лавку за 30 монет и встретить новый рассвет.'];
     if(!state.dwarf?.hired)return ['ПЕРВЫЙ ПОМОЩНИК',Dwarf.unlocked()?'Нанять Борина за 120 монет':'Второй день · три поставки на посылку',Dwarf.unlocked()?'Борин ждёт решения в улучшениях. После найма он сразу начнёт разбирать поставки.':'После трёх разобранных мешков и первой выданной посылки придёт гном-сортировщик.'];
-    if(!state.dwarf.enabled)return ['ПЕРВЫЙ ПОМОЩНИК','Включить автосортировку Борина','Откройте улучшения и поручите Борину разбор настоящей поставки.'];
+    if(!state.dwarf.enabled&&(!s.completedB2||state.goblin?.hired))return ['ПЕРВЫЙ ПОМОЩНИК','Включить автосортировку Борина','Откройте улучшения и поручите Борину разбор настоящей поставки.'];
     if(!s.completedB2)return ['РАБОТА ВДВОЁМ','Собрать посылку, пока работает Борин','Купите новую партию, а сами выполните ещё один заказ.'];
-    if(!state.goblin?.hired)return ['НОВЫЙ ПОМОЩНИК',state.day>=3?'Нанять Грика за 240 монет':'Сначала поработать вместе с Борином',state.day>=3?state.gold<240?'Продолжайте обычную торговлю и накопите 240 монет. Грик сможет собирать выбранную посылку.':'Грик предложит работу у свободной стойки. После найма Грик сразу возьмёт первую посылку.':'Грик придёт с третьего дня, когда вы освоите работу вдвоём с Борином.'];
+    if(!state.goblin?.hired)return ['НОВЫЙ ПОМОЩНИК',Goblin.unlocked()?'Нанять Грика · 240 монет':'Накопить 800 монет для встречи с Гриком',Goblin.unlocked()?'Даже после отказа Грик ждёт в улучшениях. Найм за 240 откроет автоматизацию.':'Продолжайте обычную торговлю. При кассе 800 монет Грик предложит помощь независимо от дня. Найм стоит 240.'];
     if(!state.goblin.enabled)return ['НОВЫЙ ПОМОЩНИК','Включить работу Грика','В улучшениях включите Грика и явно поручите ему выбранную посылку. Остальные посылки остаются за вами.'];
     if(!s.completedB3)return ['НОВЫЙ ПОМОЩНИК','Передать обычную посылку Грику','Грик собирает первую посылку. На листке можно выбрать помощника или собрать самому, затем забрать оплату.'];
     if(!s.guild?.founded||s.guild.phase==='charter')return ['НАЧАЛО ГИЛЬДИИ','Основать свою гильдию','Выберите название, получите флаг и включите автоторговлю в окне гильдии.'];
     if(!Automation.enabled())return ['ЛАВКА И ГИЛЬДИЯ','Возобновить автоторговлю','Откройте окно гильдии, чтобы включить покупку мешков и выдачу обычных посылок.'];
     if(!state.city?.towerOwned)return ['СТАРАЯ БАШНЯ',City.towerAvailable()?'Купить башню · 1000 монет':'Накопить на старую башню','Лавка торгует сама. Покупка башни на карте города откроет договорённости с другими постоянными клиентами.'];
     if(!Contracts.signedCount())return ['ПОСТОЯННЫЕ КЛИЕНТЫ','Договорённости доступны','Откройте условия повара и алхимика. Можно подписать договорённость или решить позже.'];
-    return ['ЛАВКА РАБОТАЕТ ВМЕСТЕ','Грик выдал первую посылку','Договорённости повторяются. Лавка ведёт обычную торговлю сама; выбранные договорённости можно поручать Грику.'];
+    return ['ЛАВКА РАБОТАЕТ ВМЕСТЕ','Грик выдал первую посылку','Каждая договорённость состоит из трёх выдач. Лавка ведёт обычную торговлю сама; выбранные посылки можно поручать Грику.'];
   }
   function setup(){
     Contracts.setup();Restoration.setup();
@@ -330,7 +354,7 @@ const Story = (()=>{
     const dwarf=button($('reception'),'',()=>setScreen('work','sort'),'dwarfStation');dwarf.className='hidden';dwarf.innerHTML='<img src="assets/dwarf-borin-redhat.png" alt="Борин, гном-сортировщик"><span class="dwarf-name">Борин</span><span class="dwarf-status"></span><span class="dwarf-progress"><i></i></span>';dwarf.querySelector('img').onerror=e=>{e.currentTarget.src='assets/s3_2.png';e.currentTarget.onerror=null;};
     const tray=button(document.querySelector('.work-heading'),'Поднос неизвестного · 0',openTray,'unknownTrayButton');tray.className='hidden';
     const workStatus=button($('work'),'',()=>setScreen('work','sort'),'dwarfWorkStatus');workStatus.className='hidden';workStatus.innerHTML='<span class="worker-label"></span><span class="worker-progress"><i></i></span>';
-    $('help').onclick=()=>{if(!enabled()){help();return;}if(state.paused)return;modal('<h2>Как вернуть лавку к жизни</h2><div class="rules"><b>Начало торговли.</b> Купите первый мешок за 10 монет, разложите находки и выполните заказ повара.<br><b>Торговля.</b> Принимайте поручения у стойки. Листки справа сразу открывают сборку. Каждый компонент — отдельная вещь в вашем запасе.<br><b>Преображение.</b> После первого дня уберите пыль и паутину и почините окно за 30 монет. После второго дня появятся стеллажи, уютный уголок и вывеска гильдии.<br><b>Второй день.</b> Три поставки на одну посылку: всего шесть поставок и две посылки. После первой выдачи придёт Борин. Найм — 120 монет; после оплаты Борин сразу начинает сортировку. Он разбирает партии параллельно с вашей сборкой.<br><b>Работа Борина.</b> Известное — в коробки, неизвестное — на поднос. За партию 2 монеты один раз. После основания гильдии можно включить автоторговлю. В рабочем уголке гнома можно приостановить.<br><b>Изучение.</b> Нажмите неизвестную находку на подносе и очистите её. Предмет перейдёт в подходящую коробку.<br><b>Продолжение.</b> На паузе мир останавливается. Игра сохраняется в этом браузере. После первой главы можно продолжать торговлю.</div>');};
+    $('help').onclick=()=>{if(!enabled()){help();return;}if(state.paused)return;modal('<h2>Как вернуть лавку к жизни</h2><div class="rules"><b>Начало торговли.</b> Купите первый мешок за 10 монет, разложите находки и выполните заказ повара.<br><b>Торговля.</b> Принимайте поручения у стойки. Листки справа сразу открывают сборку. Каждый компонент — отдельная вещь в вашем запасе.<br><b>Преображение.</b> После первого дня уберите пыль и паутину и почините окно за 30 монет. После второго дня появятся стеллажи, уютный уголок и вывеска гильдии.<br><b>Второй день.</b> Три поставки на одну посылку: всего шесть поставок и две посылки. После первой выдачи придёт Борин. Найм — 120 монет; после оплаты Борин сразу начинает сортировку. Он разбирает партии параллельно с вашей сборкой.<br><b>Работа Борина.</b> Известное — в коробки, неизвестное — на поднос. За партию 2 монеты один раз. После основания гильдии можно включить автоторговлю. В рабочем уголке гнома можно приостановить.<br><b>Изучение.</b> Нажмите неизвестную находку на подносе и очистите её. Предмет перейдёт в подходящую коробку.<br><b>Продолжение.</b> На паузе мир останавливается. Игра сохраняется в этом браузере. После первой главы можно продолжать торговлю.</div>',{activity:'background',kind:'help'});};
   }
   function update(){
     const active=enabled()&&state.started;$('game').classList.toggle('story-mode',active);if(!$('storyObjective'))return;
@@ -339,9 +363,12 @@ const Story = (()=>{
     $('game').dataset.shop=state.story.restored?'restored':'neglected';$('game').dataset.dwarf=state.dwarf?.hired?'hired':'none';
     const goal=objective();['span','strong','small'].forEach((tag,i)=>{const el=$('storyObjective').querySelector(tag);if(el.textContent!==goal[i])el.textContent=goal[i];});
     $('dayLabel').textContent=state.story.restored?(secondDay()?'День 2 · '+Math.min(2,state.story.secondDayDeliveries||0)+'/2 посылки':'День '+state.day):'Первый день · '+Math.min(2,state.story.firstDayDeliveries||0)+'/2 посылки';$('goldAdButton')?.classList.add('hidden');$('receptionGoldAd')?.classList.add('hidden');
-    $('upgradesNav')?.classList.toggle('upgrade-prompt',!!state.story.firstPaid&&(!state.story.restored&&state.story.firstDayComplete||state.story.restored&&Dwarf.canHire()||state.dwarf?.hired&&!state.dwarf.enabled));
+    const needsGrik=!state.goblin?.hired&&Goblin.unlocked();
+    $('upgradesNav')?.classList.toggle('upgrade-prompt',needsGrik||!!state.story.firstPaid&&(!state.story.restored&&state.story.firstDayComplete||state.story.restored&&Dwarf.canHire()||state.dwarf?.hired&&!state.dwarf.enabled));
+    if($('upgradesNav'))$('upgradesNav').title=needsGrik?'Грик ждёт найма · 240 монет. Нужен для автоматизации лавки.':'Улучшения лавки';
     const a=$('storyAction');if(!state.story.restored){a.textContent='Восстановить лавку · 30 монет';a.id='storyAction';a.dataset.action='restore';a.onclick=()=>restore();a.disabled=state.gold<REPAIR_COST;}
     else if(!state.dwarf?.hired){a.textContent=Dwarf.unlocked()?'Нанять гнома · 120 монет':'Борин придёт после первой посылки';a.dataset.action='hire';a.onclick=showBusiness;a.disabled=!Dwarf.canHire();}
+    else if(needsGrik){a.textContent='Нанять Грика · 240 монет';a.onclick=hireGoblin;a.disabled=!Goblin.canHire();a.dataset.action='hire-goblin';}
     else{const contracts=Contracts.ready()||Contracts.signedCount()>0;a.textContent=contracts?'Книга договорённостей':'Рабочий уголок Борина';a.onclick=contracts?Contracts.openBook:showBusiness;a.disabled=false;a.dataset.action='workshop';}
     const status=Dwarf.status();$('dwarfStation').querySelector('.dwarf-status').textContent=status.label||status.text||'Сортирует поставки';$('dwarfStation').querySelector('.dwarf-progress i').style.width=(status.progress||0)*100+'%';
     const tray=$('unknownTrayButton');let trayLabel=tray.querySelector('.unknown-tray-label');

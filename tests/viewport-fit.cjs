@@ -26,8 +26,14 @@ async function footer(p,label){
  await bounded(p,label);
 }
 async function cardFits(p,selector,label){
- const report=await p.locator(selector).first().evaluate(e=>({client:e.clientHeight,scroll:e.scrollHeight,overflow:getComputedStyle(e).overflowY}));
- assert.ok(report.client>0&&report.scroll<=report.client+1,label+': complete card content fits its real client height '+JSON.stringify(report));
+ const report=await p.locator(selector).first().evaluate(e=>{
+  const box=e.getBoundingClientRect(),nodes=[...new Set(e.querySelectorAll(':scope > *,.parcel-actions > *,.parcel-recipe > li,.contract-recipe > span'))];
+  const content=nodes.filter(node=>{const css=getComputedStyle(node);return css.display!=='none'&&css.visibility!=='hidden'&&node.getClientRects().length;}).map(node=>{const r=node.getBoundingClientRect();return {tag:node.tagName,class:node.className,text:node.textContent.trim().slice(0,70),left:r.left-box.left,top:r.top-box.top,right:r.right-box.right,bottom:r.bottom-box.bottom,width:r.width,height:r.height};});
+  return {client:e.clientHeight,content:content.length,outside:content.filter(r=>r.left< -1||r.top< -1||r.right>1||r.bottom>1)};
+ });
+ // Intentional external ray pseudos contribute to scrollHeight. Actual rows,
+ // text blocks and command rectangles must still fit the parchment itself.
+ assert.ok(report.client>0&&report.content>0&&!report.outside.length,label+': all real card content fits the sheet, excluding decorative ray pseudos '+JSON.stringify(report));
 }
 async function glyphFits(p,selector,label){
  const report=await p.locator(selector).first().evaluate(e=>{
@@ -37,9 +43,29 @@ async function glyphFits(p,selector,label){
  assert.ok(report.client>0&&report.scroll<=report.client+1&&report.topOverflow<=1&&report.bottomOverflow<=1,label+': title/price glyphs fit vertically '+JSON.stringify(report));
 }
 async function workScale(p,label){
- const report=await p.evaluate(()=>({tableRatio:$('table').offsetWidth/($('game').clientWidth-56),crates:[...document.querySelectorAll('#shelves img.boxart')].filter(img=>!img.closest('.shelf-placeholder')).map(img=>({width:img.offsetWidth,height:img.offsetHeight}))}));
+ const report=await p.evaluate(()=>{const game=$('game').getBoundingClientRect(),work=$('work').getBoundingClientRect(),table=$('table').getBoundingClientRect(),shelves=$('shelves').getBoundingClientRect(),center=game.left+game.width/2;return {tableRatio:$('table').offsetWidth/($('game').clientWidth-56),workLeft:work.left-game.left,workRight:game.right-work.right,tableCenter:table.left+table.width/2-center,shelfCenter:shelves.left+shelves.width/2-center,crates:[...document.querySelectorAll('#shelves img.boxart')].filter(img=>!img.closest('.shelf-placeholder')).map(img=>({width:img.offsetWidth,height:img.offsetHeight}))};});
  assert.ok(report.tableRatio>=.62&&report.tableRatio<=.78,label+': sorting table is about70% of the previous full width '+JSON.stringify(report));
  assert.ok(report.crates.length>=5&&report.crates.every(r=>r.width===144&&r.height===104),label+': crate images are doubled to144x104 logical pixels '+JSON.stringify(report));
+ assert.ok(Math.abs(report.workLeft)<=1&&Math.abs(report.workRight)<=1,label+': work scene spans the full frame without a reserved right strip '+JSON.stringify(report));
+ assert.ok(Math.abs(report.tableCenter)<=1&&Math.abs(report.shelfCenter)<=1,label+': table and shelves are centered on the full game frame '+JSON.stringify(report));
+ for(const selector of ['#unknownTrayButton','#autoSortButton'])if(await p.locator(selector).isVisible())await visible(p,selector,label+' unobscured work heading '+selector);
+}
+async function overlayDock(p,label){
+ const report=await p.evaluate(()=>{
+  const rail=$('taskRail'),css=getComputedStyle(rail),work=getComputedStyle($('work')),box=rail.getBoundingClientRect(),x=box.left+2,y=box.top+Math.min(45,box.height/2),hit=document.elementFromPoint(x,y),card=rail.querySelector('.order-card,.contract-offer-leaf');
+  const channels=css.backgroundColor.match(/[\d.]+/g)||[],alpha=css.backgroundColor==='transparent'?0:channels.length===4?Number(channels[3]):1;
+  return {background:css.backgroundColor,image:css.backgroundImage,shadow:css.boxShadow,alpha,pointer:css.pointerEvents,cardPointer:card&&getComputedStyle(card).pointerEvents,z:Number(css.zIndex)||0,workZ:Number(work.zIndex)||0,paddingPassesThrough:!!hit&&!rail.contains(hit),paddingHit:hit?.id||hit?.tagName};
+ });
+ assert.ok(report.alpha===0&&report.image==='none'&&report.shadow==='none',label+': only sheets have a surface; the dock has no grey panel '+JSON.stringify(report));
+ assert.equal(report.pointer,'none',label+': transparent dock gaps pass pointer input');assert.equal(report.cardPointer,'auto',label+': individual sheets remain interactive');assert.ok(report.z>report.workZ,label+': sheets overlay the full-width game');assert.equal(report.paddingPassesThrough,true,label+': an empty dock edge hits the game below '+JSON.stringify(report));
+}
+async function rarityTheme(p,label){
+ const report=await p.evaluate(()=>{
+  const leaf=document.querySelector('#contractOfferBoard [data-contract-key="royal"]'),before=JSON.stringify({orders:state.orders,uid:state.uid,gold:state.gold}),special=document.createElement('article');special.className='quest-sheet';special.style.cssText='position:absolute;visibility:hidden;pointer-events:none';$('game').append(special);styleQuestSheet(special,{rarity:'special'});
+  const result={contract:leaf.dataset.questRarity,contractColor:getComputedStyle(leaf).backgroundColor,special:special.dataset.questRarity,specialColor:getComputedStyle(special).backgroundColor};special.remove();result.statePreserved=before===JSON.stringify({orders:state.orders,uid:state.uid,gold:state.gold});return result;
+ });
+ assert.equal(report.contract,'unique',label+': agreements have the unique visual theme');assert.equal(report.special,'special',label+': the special visual theme is prepared');
+ const gold=report.contractColor.match(/[\d.]+/g).map(Number),purple=report.specialColor.match(/[\d.]+/g).map(Number);assert.ok(gold[0]>gold[2]&&gold[1]>gold[2],label+': unique sheet uses a gold background');assert.ok(purple[0]>purple[1]&&purple[2]>purple[1],label+': special sheet uses a purple background');assert.equal(report.statePreserved,true,label+': preparing a visual theme creates no special order, item or reward');
 }
 async function visibleTaskCards(p){
  return p.evaluate(()=>{
@@ -49,7 +75,14 @@ async function visibleTaskCards(p){
   }).map(e=>e.matches('.order-card')?{id:'order:'+e.dataset.orderId,selector:'#orderBoard .order-card[data-order-id="'+e.dataset.orderId+'"]',contract:false}:{id:'contract:'+e.dataset.contractKey,selector:'#contractOfferBoard [data-contract-key="'+e.dataset.contractKey+'"]',contract:true});
  });
 }
-async function snapshot(p,name){await p.screenshot({path:'audit_source/fit-'+name+'.png'});}
+async function snapshot(p,name){
+ const path='audit_source/fit-'+name+'.png';
+ try{await p.screenshot({path});}
+ catch(error){
+  if(error.code!=='UNKNOWN'&&error.errno!==-4094)throw error;
+  const alternate=path.replace(/\.png$/,'-rerun-'+Date.now()+'.png');await p.screenshot({path:alternate});console.log('Screenshot saved separately because Windows could not open the previous PNG: '+alternate);
+ }
+}
 async function advancedFixture(p){
  return p.evaluate(()=>{
   cancelDrag();forceCloseModal();BagPour.clear();City.close();if(typeof Tower!=='undefined'&&Tower.isOpen())Tower.close('reception');
@@ -76,10 +109,12 @@ async function exposeSourceUid(p,uid){
 async function runRoyal(p,label,resizeMidway=false){
  const keep=await royalFixture(p);await pause(p);await bounded(p,label+' royal letter');
  const royalLeaf='#contractOfferBoard [data-contract-key="royal"]';
+ await rarityTheme(p,label);await overlayDock(p,label+' reception dock');
  await cardFits(p,royalLeaf,label+' signed royal card');await glyphFits(p,royalLeaf+' h3',label+' signed royal title');await glyphFits(p,royalLeaf+' .quest-price',label+' signed royal price');
  await p.evaluate(()=>{const o=Contracts.current('royal');Goblin.setEnabled(true);Goblin.assign(o,true);render();});await pause(p);await cardFits(p,royalLeaf,label+' working royal card');await glyphFits(p,royalLeaf+' h3',label+' working royal title');await glyphFits(p,royalLeaf+' .quest-price',label+' working royal price');
  await p.evaluate(()=>{Goblin.assign(Contracts.current('royal'),false);Goblin.setEnabled(false);render();});await pause(p);
  await click(p,'#contractOfferBoard [data-contract-key="royal"] [data-parcel-action="manual"]',label+' royal manual command');await pause(p);
+ await workScale(p,label+' royal work geometry');await overlayDock(p,label+' assembly overlay');
  assert.equal(await p.evaluate(()=>state.mode),'order');assert.equal(await p.locator('#checklist .check-row').count(),3);assert.deepEqual(await p.locator('#checklist .check-row b').allTextContents(),['0/5','0/5','0/5']);
  for(let i=0;i<3;i++)await visible(p,'#checklist .check-row:nth-of-type('+(i+1)+')',label+' complete royal recipe row'+i);
  assert.match(await p.locator('#checklist').textContent(),/Интендант короля/);assert.match(await p.locator('#checklist').textContent(),/360/);await visible(p,'#backSort',label+' manual return');await footer(p,label+' royal assembly');await snapshot(p,label+'-royal');
@@ -90,6 +125,7 @@ async function runRoyal(p,label,resizeMidway=false){
    await exposeSourceUid(p,uid);await click(p,'#sourceItems [data-uid="'+uid+'"]',label+' held original before resize');
    const before=await p.evaluate(()=>{window.__fitHeldNode=drag.node;return state.order.packed.map(x=>x.uid);});
    await p.setViewportSize({width:1280,height:720});await pause(p);await footer(p,label+' resize1920to1280');assert.deepEqual(await p.evaluate(()=>state.order.packed.map(x=>x.uid)),before,'Viewport resize preserves five already packed originals');
+   await workScale(p,label+' held resize geometry');await overlayDock(p,label+' held resize overlay');
    assert.deepEqual(await p.evaluate(()=>({uid:drag?.uid,connected:!!drag?.node.isConnected,same:drag?.node===window.__fitHeldNode})),{uid,connected:true,same:true},'Viewport resize preserves the held original and its live input node');
    const last=keep.uids.at(-1);await exposeSourceUid(p,last);await visible(p,'#sourceItems [data-uid="'+last+'"]',label+' last source original immediately after resize');alreadyHeld=true;
   }
@@ -121,6 +157,9 @@ async function stressAndCity(p,label){
  }
  assert.equal(seen.size,7,label+': all seven letters, recipes and commands are reachable through list buttons');await snapshot(p,label+'-last-royal-offer');
  for(let page=0;page<10&&!await p.locator('#taskPrev').isDisabled();page++){await click(p,'#taskPrev',label+' previous letters up');await pause(p);}assert.equal(await p.locator('#taskPrev').isDisabled(),true);
+ const overlayLoot=await p.evaluate(()=>{state.bag=[{type:0,x:.2},{type:38,x:.92}].map(({type,x})=>{const item=makeItem(type);item.unknown=false;item.tablePos={x,y:.52};return item;});setScreen('work','sort');return {gold:state.gold,items:state.bag.map(item=>({uid:item.uid,cat:items[item.type].cat}))};});await pause(p);await workScale(p,label+' seven-letter sorting');await overlayDock(p,label+' sorting overlay');
+ for(const item of overlayLoot.items){await click(p,'#pile [data-uid="'+item.uid+'"]',label+' original under open overlay'+item.uid);assert.equal(await p.evaluate(()=>drag?.uid),item.uid);await click(p,'#shelves [data-cat="'+item.cat+'"]',label+' uncovered real shelf'+item.cat);assert.equal(await p.evaluate(uid=>state.stock.some(item=>item.uid===uid),item.uid),true);}
+ assert.equal(await p.evaluate(()=>state.bag.length),0);assert.equal(await p.evaluate(()=>state.gold),overlayLoot.gold,'The overlay input check never grants money or charges another fee');await bounded(p,label+' sorted beside seven letters');await snapshot(p,label+'-centered-overlay');
  await click(p,'#ordersNav',label+' all orders book');assert.equal(await p.locator('#modal .quest-book article').count(),4);await visible(p,'#closeModal',label+' orders book close');await click(p,'#closeModal',label+' close orders book');
  await click(p,'#cityNav',label+' city control');await pause(p);await visible(p,'#cityClose',label+' city return');await visible(p,'#cityEnterTower',label+' enter tower');await bounded(p,label+' city');await snapshot(p,label+'-city');
  await click(p,'#cityEnterTower',label+' tower entry');await pause(p);assert.equal(await p.evaluate(()=>state.screen),'tower');await visible(p,'#towerClose',label+' tower city return');await visible(p,'#towerReturnShop',label+' tower shop return');await bounded(p,label+' tower');await snapshot(p,label+'-tower');await click(p,'#towerReturnShop',label+' tower return');assert.equal(await p.evaluate(()=>state.screen),'reception');
@@ -129,7 +168,8 @@ async function stressAndCity(p,label){
  for(const [width,height]of CASES){
   const p=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'}),errors=[];p.on('pageerror',e=>errors.push(e.message));const label=width+'x'+height;
   await p.goto(BASE);await p.waitForFunction(()=>window.LootkeeperEngine?.ready);await pause(p);await bounded(p,label+' menu');await click(p,'#startGame',label+' actual new game');await pause(p);await bounded(p,label+' letter');await click(p,'#acceptInheritance',label+' inheritance accept');await p.waitForTimeout(800);
-  assert.equal(await p.evaluate(()=>{const scene=LootkeeperEngine.game.scene.getScenes(true)[0],views=[...scene.views];return views.some(([id,v])=>id.startsWith('visitor:')&&v.sprite.alpha>.5)&&views.some(([id,v])=>id.startsWith('counter-bag:')&&v.sprite.alpha>.5);}),true,'Native first visitor and sack are visibly present');
+  const entry=await p.evaluate(()=>{const scene=LootkeeperEngine.game.scene.getScenes(true)[0],views=[...scene.views],relevant=views.filter(([id])=>id.startsWith('visitor:')||id.startsWith('counter-bag:'));return {visible:views.some(([id,v])=>id.startsWith('visitor:')&&v.sprite.alpha>.5)&&views.some(([id,v])=>id.startsWith('counter-bag:')&&v.sprite.alpha>.5),scene:scene.sys.settings.key,screen:state.screen,paused:state.paused,hidden:document.hidden,views:relevant.map(([id,v])=>({id,alpha:v.sprite.alpha,visible:v.sprite.visible,x:v.sprite.x,y:v.sprite.y})),visitorCss:getComputedStyle($('visitor')).opacity,bagCss:getComputedStyle($('bag').querySelector('img')).opacity};});
+  assert.equal(entry.visible,true,'Native first visitor and sack are visibly present '+JSON.stringify(entry));
   await visible(p,'#buyBag',label+' first purchase button');await bounded(p,label+' first purchase');await snapshot(p,label+'-start');await click(p,'#buyBag',label+' paid first bag');
   await p.waitForFunction(()=>!BagPour.active());assert.equal(await p.evaluate(()=>state.gold),70);assert.equal(await p.evaluate(()=>state.bag.length),8);await footer(p,label+' first sorting');await workScale(p,label+' sorting geometry');await snapshot(p,label+'-sorting');
   const originals=await p.evaluate(()=>state.bag.map(x=>({uid:x.uid,cat:items[x.type].cat,unknown:isUnknown(x)})));

@@ -7,7 +7,7 @@ const Automation=(()=>{
   const STOCK_LIMIT=72,ACTION_SECONDS=.5,UNKNOWN_LIMIT=16;
   const RECEPTION_VISIT_SECONDS=1.5;
   let presentedGuest='',presentationElapsed=0;
-  const receptionVisible=()=>state.screen==='reception'&&!(typeof City!=='undefined'&&City.isOpen());
+  const receptionVisible=()=>state.screen==='reception'&&!modalIsOpen()&&!(typeof City!=='undefined'&&City.isOpen());
   function visitorPresented(key,dt){
     if(!receptionVisible()){presentedGuest='';presentationElapsed=0;return true;}
     if(presentedGuest!==key){presentedGuest=key;presentationElapsed=0;}
@@ -41,12 +41,12 @@ const Automation=(()=>{
     a.lastReason=a.enabled?'Автоторговля возобновлена':'Автоторговля приостановлена';save();return true;
   }
   const enabled=()=>!!state.story?.automation?.enabled;
-  const blocked=()=>!state.started||state.paused||state.ended||state.autoSorting||state.tutorial?.active||document.hidden||drag||state.selected!==null||BagPour.active()||!$('modal').classList.contains('hidden');
+  const blocked=()=>!state.started||state.paused||state.ended||state.autoSorting||state.tutorial?.active||document.hidden||drag||state.selected!==null||BagPour.active()||isModalBlockingWork();
   const processingReserve=()=>state.dwarf?.hired&&state.dwarf.enabled?2:0;
   function freeStock(){
     Goblin.reconcile();
     const reserved=new Set(allOrders().flatMap(o=>o.reservedUids||[])),seen=new Set();
-    return state.stock.filter(x=>!isUnknown(x)&&!reserved.has(x.uid)&&state.selected!==x.uid&&drag?.uid!==x.uid&&!seen.has(x.uid)&&seen.add(x.uid));
+    return state.stock.filter(x=>!isUnknown(x)&&!reserved.has(x.uid)&&state.selected!==x.uid&&drag?.uid!==x.uid&&!isItemBeingExamined(x.uid)&&!seen.has(x.uid)&&seen.add(x.uid));
   }
   function payableParcel(){
     Goblin.reconcile();

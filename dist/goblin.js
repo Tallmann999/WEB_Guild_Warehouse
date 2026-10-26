@@ -3,15 +3,18 @@
 // Reservations and movements refer to the original inventory instances. A parcel
 // changes hands in one synchronous transaction; animation never owns its stock.
 const Goblin = (()=>{
-  const VERSION=2,HIRE_COST=240,DELIVERY_FEE=3,ITEM_SECONDS=2,DISPATCH_SECONDS=3;
+  const VERSION=2,HIRE_COST=240,OFFER_GOLD=800,DELIVERY_FEE=3,ITEM_SECONDS=2,DISPATCH_SECONDS=3;
   let needsRefresh=false;
   const number=(value,fallback=0)=>Number.isFinite(Number(value))?Math.max(0,Number(value)):fallback;
   const orders=()=>state.orders||[];
-  const busy=uid=>state.selected===uid||drag?.uid===uid;
+  const inHand=uid=>state.selected===uid||drag?.uid===uid;
+  const busy=uid=>inHand(uid)||isItemBeingExamined(uid);
   const isAssigned=o=>!!o&&o.assignedTo==='goblin';
   const automationPaused=o=>!!o?.automationOwned&&typeof Automation!=='undefined'&&!Automation.enabled();
   const complete=o=>!!o&&o.recipe.every(r=>o.packed.filter(x=>x.type===r.type).length===r.count);
-  const receptionVisible=()=>state.screen==='reception'&&!(typeof City!=='undefined'&&City.isOpen());
+  const receptionVisible=()=>state.screen==='reception'&&!modalIsOpen()&&!(typeof City!=='undefined'&&City.isOpen());
+  const autoDispatchEnabled=()=>typeof Automation!=='undefined'&&Automation.enabled();
+  const waitsForClaim=()=>receptionVisible()&&!autoDispatchEnabled();
   const readyToClaim=o=>!!o&&isAssigned(o)&&o.accepted!==false&&!o.delivered&&!!o.fulfillmentReady&&complete(o);
   const blocked=()=>!state.started||state.paused||state.ended||state.autoSorting||state.tutorial?.active||document.hidden||typeof BagPour!=='undefined'&&BagPour.active();
   function ensure(){
@@ -27,6 +30,8 @@ const Goblin = (()=>{
       // Readiness belongs to the real packed parcel, not to its leaflet DOM.
       if(o.fulfillmentReady&&(!isAssigned(o)||!complete(o)))delete o.fulfillmentReady;
     }
+    g.suspendedRecognitionJobs??=[];
+    if(g.suspendedRecognitionJob){g.suspendedRecognitionJobs.push(g.suspendedRecognitionJob);delete g.suspendedRecognitionJob;}
     for(const field of ['job','suspendedAutomationJob'])if(g[field]){
       const job=g[field],o=orders().find(o=>o.id===job.orderId);
       if(!o||!isAssigned(o)||o.accepted===false||o.delivered||g.receipts.some(r=>r.orderId===o.id))g[field]=null;
@@ -36,13 +41,18 @@ const Goblin = (()=>{
         job.duration=job.kind==='dispatch'?DISPATCH_SECONDS:ITEM_SECONDS;
       }
     }
+    g.suspendedRecognitionJobs=g.suspendedRecognitionJobs.filter(job=>{
+      const o=orders().find(o=>o.id===job.orderId);
+      if(!o||!isAssigned(o)||o.accepted===false||o.delivered||g.receipts.some(r=>r.orderId===o.id))return false;
+      job.kind=job.kind==='dispatch'?'dispatch':'pack';job.elapsed=number(job.elapsed);job.duration=job.kind==='dispatch'?DISPATCH_SECONDS:ITEM_SECONDS;return true;
+    });
     return g;
   }
   function eligible(){
     const s=state.story;
-    return !!s?.completedB2&&state.day>=3;
+    return !!s?.completedB2;
   }
-  function unlocked(){return eligible()&&!!(state.goblin?.hired||state.story.goblinEncounterSeen||state.story.goblinEncounterPending);}
+  function unlocked(){return eligible()&&!!(state.goblin?.hired||state.story.goblinEncounterSeen||state.story.goblinEncounterPresented||state.story.goblinEncounterPending&&state.gold>=OFFER_GOLD);}
   function canHire(){return unlocked()&&!state.goblin?.hired&&state.gold>=HIRE_COST;}
   function hire(){
     const g=ensure();
@@ -68,6 +78,7 @@ const Goblin = (()=>{
     o.assignedTo=value?'goblin':'manual';
     if(g.job?.orderId===o.id)g.job=null;
     if(g.suspendedAutomationJob?.orderId===o.id)g.suspendedAutomationJob=null;
+    g.suspendedRecognitionJobs=g.suspendedRecognitionJobs.filter(job=>job.orderId!==o.id);
     if(value&&state.order===o&&state.screen==='work'&&state.mode==='order'){
       cancelDrag();state.mode='sort';state.activeCat=null;state.inspectCat=null;
     }
@@ -103,6 +114,9 @@ const Goblin = (()=>{
     // Manual promises, including an offered visitor order, outrank automation.
     reserveGroup(orders().filter(o=>!isAssigned(o)));
     reserveGroup(orders().filter(isAssigned));
+    if(g.job&&recognitionTouches(g.job)&&validJob(g.job,true)){g.suspendedRecognitionJobs.push(g.job);g.job=null;changed=true;}
+    const parked=g.suspendedRecognitionJobs.filter(job=>validJob(job,true));
+    if(parked.length!==g.suspendedRecognitionJobs.length){g.suspendedRecognitionJobs=parked;changed=true;}
     if(g.job&&!validJob(g.job)){g.job=null;changed=true;}
     return changed;
   }
@@ -114,14 +128,21 @@ const Goblin = (()=>{
     const owner=orders().find(o=>o.reservedUids.includes(uid));
     return !owner||owner.id===orderId;
   }
-  function validJob(job){
+  function recognitionTouches(job){
+    const o=orders().find(o=>o.id===job.orderId);
+    return job.kind==='dispatch'?!!o?.packed.some(x=>isItemBeingExamined(x.uid)):isItemBeingExamined(job.uid);
+  }
+  function validJob(job,ignoreRecognition=false){
     const o=orders().find(o=>o.id===job.orderId);
     if(!o||!isAssigned(o)||o.accepted===false||o.delivered)return false;
-    if(job.kind==='dispatch')return complete(o)&&!o.packed.some(x=>busy(x.uid));
+    const unavailable=ignoreRecognition?inHand:busy;
+    if(job.kind==='dispatch')return complete(o)&&!o.packed.some(x=>unavailable(x.uid));
     const x=state.stock.find(x=>x.uid===job.uid);
-    return !!x&&!isUnknown(x)&&!busy(x.uid)&&o.reservedUids.includes(x.uid)&&o.recipe.some(r=>r.type===x.type&&o.packed.filter(y=>y.type===r.type).length<r.count);
+    return !!x&&!isUnknown(x)&&!unavailable(x.uid)&&o.reservedUids.includes(x.uid)&&o.recipe.some(r=>r.type===x.type&&o.packed.filter(y=>y.type===r.type).length<r.count);
   }
   function nextJob(g){
+    const parked=g.suspendedRecognitionJobs.findIndex(job=>!recognitionTouches(job)&&!automationPaused(orders().find(o=>o.id===job.orderId))&&validJob(job));
+    if(parked>=0){g.job=g.suspendedRecognitionJobs.splice(parked,1)[0];return true;}
     if(g.suspendedAutomationJob&&!automationPaused(orders().find(o=>o.id===g.suspendedAutomationJob.orderId))){
       const saved=g.suspendedAutomationJob;g.suspendedAutomationJob=null;
       if(validJob(saved)){g.job=saved;return true;}
@@ -130,7 +151,7 @@ const Goblin = (()=>{
       if(g.receipts.some(r=>r.orderId===o.id))continue;
       if(complete(o)&&!o.packed.some(x=>busy(x.uid))){
         if(!o.fulfillmentReady){o.fulfillmentReady=true;needsRefresh=true;save();}
-        if(receptionVisible())continue;
+        if(waitsForClaim())continue;
         g.job={kind:'dispatch',orderId:o.id,elapsed:0,duration:DISPATCH_SECONDS};return true;
       }
       const x=state.stock.find(x=>o.reservedUids.includes(x.uid)&&!isUnknown(x)&&!busy(x.uid));
@@ -149,12 +170,13 @@ const Goblin = (()=>{
       reconcile();needsRefresh=true;save();return true;
     }
     o.fulfillmentReady=true;
-    return deliver(o,g);
+    return deliver(o,g,true);
   }
-  function deliver(o,g){
+  function deliver(o,g,automatic=false){
     if(!o||!orders().includes(o)||!readyToClaim(o)||g.receipts.some(r=>r.orderId===o.id))return false;
     if(g.job?.orderId===o.id)g.job=null;
     if(g.suspendedAutomationJob?.orderId===o.id)g.suspendedAutomationJob=null;
+    g.suspendedRecognitionJobs=g.suspendedRecognitionJobs.filter(job=>job.orderId!==o.id);
     const gross=number(o.reward),fee=Math.min(DELIVERY_FEE,gross);
     // Mark and remove before recording the credit: a reload can only observe
     // either the unfinished parcel or the completed transaction, never both.
@@ -173,6 +195,7 @@ const Goblin = (()=>{
     needsRefresh=true;reconcile();
     Story.onOrderDelivered(o,'goblin');
     toast('Гоблин выдал посылку: +'+gross+' монет · комиссия '+fee+' · в кассу +'+(gross-fee)+'.');
+    if(automatic&&receptionVisible()&&typeof automaticParcelFeedback==='function')automaticParcelFeedback(o,gross-fee);
     save();return true;
   }
   function claim(o){
@@ -202,16 +225,16 @@ const Goblin = (()=>{
     // Save the paused automatic operation separately so an explicitly assigned
     // parcel can still use Grik. Its elapsed clock resumes without repacking.
     if(g.job&&automationPaused(orders().find(o=>o.id===g.job.orderId))){g.suspendedAutomationJob=g.job;g.job=null;changed=true;}
-    // Returning to the counter changes only presentation: no sale happens
-    // behind the owner's ready button, and packed instances remain intact.
-    if(g.job?.kind==='dispatch'&&receptionVisible()){
+    // Before guild automation, the open counter still waits for the owner.
+    // Retain any partial dispatch clock when returning from another screen.
+    if(g.job?.kind==='dispatch'&&waitsForClaim()){
       const o=orders().find(o=>o.id===g.job.orderId);
-      if(o)o.fulfillmentReady=true;
-      g.job=null;changed=true;needsRefresh=true;
+      if(o&&!o.fulfillmentReady){o.fulfillmentReady=true;changed=true;needsRefresh=true;}
     }
     let remaining=Math.max(0,Math.min(10,Number(dt)||0));
     for(let steps=0;steps<8&&remaining>0;steps++){
       if(!g.job){if(!nextJob(g))break;changed=true;}
+      if(g.job.kind==='dispatch'&&waitsForClaim())break;
       const used=Math.min(remaining,Math.max(0,g.job.duration-g.job.elapsed));
       g.job.elapsed+=used;remaining-=used;
       if(g.job.elapsed>=g.job.duration){finishJob(g);changed=true;}else break;
@@ -224,15 +247,16 @@ const Goblin = (()=>{
     if(!g)return {...base,state:'inactive',label:'Помощник недоступен в старой версии'};
     if(!g.hired){
       const ready=canHire();
-      const label=!state.story.completedB2?'Сначала поработайте вместе с Борином':state.day<3?'Грик придёт с третьего дня':!unlocked()?'Грик скоро подойдёт к стойке':state.gold<HIRE_COST?'Накопите 240 монет':'Грик готов к найму';
+      const label=!state.story.completedB2?'Сначала поработайте вместе с Борином':!unlocked()?'Грик предложит помощь при кассе '+OFFER_GOLD+' монет':state.gold<HIRE_COST?'Накопите 240 монет':'Грик ждёт найма · 240 монет';
       return {...base,state:ready?'ready_to_hire':'locked',canHire:ready,label};
     }
     const pending=orders().filter(o=>isAssigned(o)&&o.accepted!==false&&!o.delivered);
     const common={...base,pending:pending.length,progress:g.job?Math.min(1,g.job.elapsed/g.job.duration):0,orderId:g.job?.orderId||null,currentUid:g.job?.uid||null};
     if(!g.enabled)return {...common,state:'disabled',label:'Работа приостановлена'};
     if(blocked())return {...common,state:'paused',label:'Гоблин ждёт, пока вы вернётесь'};
-    if(receptionVisible()&&pending.some(readyToClaim))return {...common,state:'ready',progress:1,orderId:pending.find(readyToClaim).id,label:'Посылка готова · нажмите «Выполнено» на листке'};
+    if(waitsForClaim()&&pending.some(readyToClaim))return {...common,state:'ready',progress:1,orderId:pending.find(readyToClaim).id,label:'Посылка готова · нажмите «Выполнено» на листке'};
     if(g.job?.kind==='dispatch')return {...common,state:'dispatching',label:'Выдаёт готовую посылку · комиссия 3 монеты'};
+    if(autoDispatchEnabled()&&pending.some(readyToClaim))return {...common,state:'dispatching',orderId:pending.find(readyToClaim).id,label:'Грик сам выдаст готовую посылку'};
     if(g.job){const x=state.stock.find(x=>x.uid===g.job.uid);return {...common,state:'packing',label:'Упаковывает: '+(items[x?.type]?.name||'компонент')};}
     if(!pending.length)return {...common,state:'idle',label:g.pendingFirstParcel?'Ждёт первую принятую посылку':typeof Automation!=='undefined'&&Automation.enabled()?'Ждёт обычную посылку — автоторговля включена':'Доверьте Грику посылку кнопкой на листке'};
     if(pending.some(o=>o.reservedUids.some(uid=>busy(uid))))return {...common,state:'waiting_for_hands',label:'Ждёт, пока вы отпустите нужную вещь'};
@@ -240,5 +264,5 @@ const Goblin = (()=>{
     const o=pending[0],line=o.recipe.find(r=>o.packed.filter(x=>x.type===r.type).length+o.reservedUids.filter(uid=>state.stock.some(x=>x.uid===uid&&x.type===r.type)).length<r.count);
     return {...common,state:'waiting_for_stock',label:line?'Нужны свободные товары: '+items[line.type].name:'Ждёт свободный товар · ручные резервы защищены'};
   }
-  return {ensure,eligible,unlocked,canHire,hire,setEnabled,assign,reconcile,canUse,advance,status,isAssigned,refresh,readyToClaim,isReady:readyToClaim,claim};
+  return {OFFER_GOLD,ensure,eligible,unlocked,canHire,hire,setEnabled,assign,reconcile,canUse,advance,status,isAssigned,refresh,autoDispatchEnabled,waitsForClaim,readyToClaim,isReady:readyToClaim,claim};
 })();

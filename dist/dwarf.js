@@ -20,10 +20,15 @@ const Dwarf = (()=>{
       b.uids=[...new Set(Array.isArray(b.uids)?b.uids:[])];b.feePaid=!!b.feePaid;b.completed=!!b.completed;
       b.worked=number(b.worked);b.sorted=number(b.sorted);b.unknown=number(b.unknown);
     }
-    if(d.job){
-      const x=state.bag.find(x=>x.uid===d.job.uid),b=d.batches.find(b=>b.id===d.job.batchId);
-      if(!x||!b||!b.feePaid||b.completed||!b.uids.includes(x.uid))d.job=null;
-      else{d.job.elapsed=number(d.job.elapsed);d.job.duration=ITEM_SECONDS;}
+    d.suspendedRecognitionJobs??=[];
+    if(d.suspendedRecognitionJob){d.suspendedRecognitionJobs.push(d.suspendedRecognitionJob);delete d.suspendedRecognitionJob;}
+    const activeJob=d.job,savedJobs=[d.job,...d.suspendedRecognitionJobs].filter(Boolean);d.job=null;d.suspendedRecognitionJobs=[];
+    const validUids=new Set();
+    for(const job of savedJobs){
+      const x=state.bag.find(x=>x.uid===job.uid),b=d.batches.find(b=>b.id===job.batchId);
+      if(!x||!b||!b.feePaid||b.completed||!b.uids.includes(x.uid)||validUids.has(job.uid))continue;
+      validUids.add(job.uid);job.elapsed=number(job.elapsed);job.duration=ITEM_SECONDS;
+      if(job===activeJob)d.job=job;else d.suspendedRecognitionJobs.push(job);
     }
     return d;
   }
@@ -59,7 +64,7 @@ const Dwarf = (()=>{
     d.job=null;updateVisual();save();return true;
   }
   function isClaimed(uid){const d=ensure();return !!(d?.hired&&d.enabled&&d.job?.uid===uid);}
-  function busy(x){return state.selected===x.uid||drag?.uid===x.uid;}
+  function busy(x){return state.selected===x.uid||drag?.uid===x.uid||isItemBeingExamined(x.uid);}
   function blocked(){return !state.started||state.paused||state.ended||state.autoSorting||state.tutorial?.active||document.hidden||typeof BagPour!=='undefined'&&BagPour.active();}
   function settle(d){
     let changed=false;
@@ -70,6 +75,8 @@ const Dwarf = (()=>{
     return changed;
   }
   function nextJob(d){
+    const parked=d.suspendedRecognitionJobs.findIndex(job=>{const x=state.bag.find(x=>x.uid===job.uid);return x&&!busy(x);});
+    if(parked>=0){d.job=d.suspendedRecognitionJobs.splice(parked,1)[0];return true;}
     // Known components go first. A mystery never stalls a batch of known goods.
     const candidates=state.bag.filter(x=>!busy(x));
     candidates.sort((a,b)=>Number(isUnknown(a))-Number(isUnknown(b)));
@@ -125,6 +132,7 @@ const Dwarf = (()=>{
     if(!d.enabled){refresh();updateVisual();return;}
     register(state.bag);
     let changed=settle(d),remaining=Math.max(0,Math.min(10,Number(dt)||0));
+    if(d.job&&isItemBeingExamined(d.job.uid)){d.suspendedRecognitionJobs.push(d.job);d.job=null;changed=true;}
     // Bounded loop also supports a larger playtest step without an unbounded catch-up.
     for(let steps=0;steps<8&&remaining>0;steps++){
       if(d.job){const x=state.bag.find(x=>x.uid===d.job.uid);if(!x||busy(x)){d.job=null;changed=true;}}

@@ -1,0 +1,37 @@
+'use strict';
+const {chromium}=require('C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict');
+const BASE=process.env.STORY_TEST_URL||'http://127.0.0.1:18765/';
+(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
+  const page=await browser.newPage({viewport:{width:1280,height:800},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(BASE);await page.waitForFunction(()=>window.LootkeeperEngine?.ready);
+  const initial=await page.evaluate(()=>{
+    LootkeeperEngine.bridge.step=()=>{};cancelDrag();forceCloseModal();BagPour.clear();state=freshState();
+    Object.assign(state,{started:true,day:4,gold:500,orderUid:0,screen:'work',mode:'sort',orders:[],order:null,offers:[],bag:[],unknownTray:[],tutorial:{active:false},city:{towerOwned:true,towerPaid:1000}});
+    state.story={version:1,letterRead:true,inheritedOpened:true,firstPaid:true,restored:true,firstDayFlowVersion:2,firstDayComplete:true,firstDayPurchases:2,firstDayDeliveries:2,secondDayFlowVersion:2,secondDayActive:false,completedB2:true,goblinEncounterSeen:true,dwarfEncounterSeen:true,elapsed:30,nextVisit:999};
+    state.dwarf={hired:true,enabled:false,batches:[]};state.goblin={hired:true,enabled:false};
+    state.stock=[38,38,31,31,32,32,0,0,1,1,6,6].map(type=>{const x=makeItem(type);x.unknown=false;return x;});
+    Story.ensure();Dwarf.ensure();Goblin.ensure();Contracts.signRegular('chef');Contracts.signRegular('alchemy');Goblin.assign(Contracts.current('chef'),true);Goblin.setEnabled(true);state.goblin.pendingFirstParcel=false;
+    render();Contracts.openBook();window.__liveBook=$('regularContractsBook');
+    return {gold:state.gold,id:Contracts.current('chef').id,chefUids:Contracts.current('chef').reservedUids.slice(),owned:owned().map(x=>x.uid),alchemy:Contracts.current('alchemy').id};
+  });
+  assert.equal(await page.evaluate(()=>state.paused),false);assert.equal(await page.locator('#modal').getAttribute('data-activity'),'background');
+  const alchemy='#regularContractsBook [data-book-contract-key="alchemy"] [data-parcel-action="manual"]';await page.locator(alchemy).focus();
+  const scroll=await page.evaluate(()=>{const node=$('modal').querySelector('.modal-card');node.scrollTop=40;return node.scrollTop;});
+  await page.evaluate(()=>{Goblin.advance(2.2);Contracts.update();});
+  assert.equal(await page.evaluate(()=>Contracts.current('chef').packed.length),1);
+  assert.match(await page.locator('#regularContractsBook [data-book-contract-key="chef"]').textContent(),/1\/6/);
+  assert.equal(await page.evaluate(()=>$('regularContractsBook')===window.__liveBook),true,'The existing modal/book root survives the update');
+  assert.equal(await page.locator(alchemy).evaluate(node=>document.activeElement===node),true,'Packing preserves the selected command in another row');
+  assert.equal(await page.evaluate(()=>$('modal').querySelector('.modal-card').scrollTop),scroll);
+  await page.evaluate(()=>{for(let i=0;i<3;i++)Goblin.advance(10);Contracts.update();});
+  assert.equal(await page.evaluate(()=>Contracts.current('chef')||null),null);assert.equal(await page.evaluate(()=>state.gold),initial.gold+197);
+  assert.equal(await page.locator('#regularContractsBook [data-order-id="'+initial.id+'"]').count(),0,'A sold parcel has no stale command in the open book');
+  assert.match(await page.locator('#regularContractsBook [data-book-contract-key="chef"]').textContent(),/Выдано: 1\/3/);
+  assert.equal(await page.locator(alchemy).evaluate(node=>document.activeElement===node),true);assert.equal(await page.evaluate(()=>$('modal').querySelector('.modal-card').scrollTop),scroll);
+  assert.deepEqual(await page.evaluate(()=>owned().map(x=>x.uid)),initial.owned.filter(uid=>!initial.chefUids.includes(uid)));
+  assert.equal(await page.evaluate(()=>state.goblin.feesPaid),3);assert.equal(await page.evaluate(()=>Contracts.current('alchemy').id),initial.alchemy);
+  assert.equal(await page.locator('#modal').isVisible(),true);assert.equal(await page.evaluate(()=>state.paused),false);
+  await page.screenshot({path:'audit_source/parallel-contracts-live-book-1280.png'});assert.deepEqual(errors,[]);
+  console.log('PASS: contract book is background; real packing and gross200/fee3 sale update its open rows without stale parcel controls, modal replacement, scroll/focus loss or changes to the other parcel.');
+}finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

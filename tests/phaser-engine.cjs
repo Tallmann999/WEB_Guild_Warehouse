@@ -4,6 +4,13 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const BASE=process.env.STORY_TEST_URL||'http://127.0.0.1:18765/';
 async function scene(p,key){await p.waitForFunction(key=>LootkeeperEngine.stats?.scene===key,key);}
+async function snapshot(p,path){
+ try{await p.screenshot({path});}
+ catch(error){
+  if(error.code!=='UNKNOWN'&&error.errno!==-4094)throw error;
+  const alternate=path.replace(/\.png$/,'-rerun-'+Date.now()+'.png');await p.screenshot({path:alternate});console.log('Screenshot saved separately because Windows could not open the previous PNG: '+alternate);
+ }
+}
 async function fixture(p){return p.evaluate(()=>{
  cancelDrag();forceCloseModal();City.close();BagPour.clear();state=freshState();state.started=true;state.day=3;state.gold=900;state.tutorial={active:false};state.orderUid=0;state.orders=[];state.order=null;state.offers=[];state.collection=items.map(x=>x.id);state.unknownTray=[];
  state.story={version:1,letterRead:true,inheritedOpened:true,firstPaid:true,restored:true,shopRestorationStage:2,firstDayComplete:true,firstDayFlowVersion:2,firstDayPurchases:2,firstDayDeliveries:2,secondDayFlowVersion:2,secondDayActive:false,completedB2:true,elapsed:30,nextVisit:999,dwarfEncounterSeen:true,goblinEncounterSeen:true,regularContracts:{}};
@@ -28,8 +35,8 @@ async function fixture(p){return p.evaluate(()=>{
   await p.evaluate(()=>City.open('tower'));await scene(p,'City');assert.equal(await p.locator('#reception').evaluate(e=>getComputedStyle(e).visibility),'hidden');assert.equal(await p.evaluate(()=>LootkeeperEngine.game.scene.getScenes(true)[0].backgrounds.length),1);
   await p.evaluate(()=>{City.close();setScreen('work','sort');});await scene(p,'Workbench');
  }
- await p.setViewportSize({width:820,height:850});await p.waitForTimeout(100);await p.screenshot({path:'audit_source/phaser-workbench-820.png'});
- await p.evaluate(()=>{setScreen('reception');renderReception();});await scene(p,'Reception');await p.waitForTimeout(700);await p.screenshot({path:'audit_source/phaser-reception-820.png'});
+ await p.setViewportSize({width:820,height:850});await p.waitForTimeout(100);await snapshot(p,'audit_source/phaser-workbench-820.png');
+ await p.evaluate(()=>{setScreen('reception');renderReception();});await scene(p,'Reception');await p.waitForTimeout(700);await snapshot(p,'audit_source/phaser-reception-820.png');
  const paused=await p.evaluate(()=>{state.paused=true;return state.story.elapsed;});await p.waitForTimeout(100);assert.equal(await p.evaluate(()=>state.story.elapsed),paused);
  assert.deepEqual(errors,[]);console.log('PASS: local Phaser4 boot and native asset manifest, Menu/Reception/Workbench/City, real item input and uid, scroll masks, foreground counter crop, three scene restart cycles,820 geometry and one engine frame loop.');
 }finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

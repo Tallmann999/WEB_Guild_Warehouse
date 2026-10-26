@@ -27,6 +27,20 @@ export class ReceptionScene extends BaseScene{
       if(image.cleanOverlay)image.setAlpha(cleaning);
       else if(image.texture.key==='environment.shop-furnished')image.setAlpha(s.furnished);
     }
+    if(!this.counterLip){
+      this.counterLip=this.add.graphics().setDepth(27);
+      this.events.once('shutdown',()=>{this.counterLip=null;});
+    }
+    this.counterLip.clear();
+    if(derelict&&s.counter){
+      const {x,y,width}=s.counter,alpha=1-cleaning;
+      // A shallow rear shadow and worn top rim separate the dusty tabletop
+      // from the floor behind it. This is also the visitor occlusion edge.
+      for(let band=0;band<5;band++)this.counterLip.fillStyle(0x17110c,(.04+band*.025)*alpha).fillRect(x,y-10+band*2,width,2);
+      this.counterLip.fillStyle(0x21170f,.62*alpha).fillRect(x,y,width,3);
+      this.counterLip.fillStyle(0xa58b67,.34*alpha).fillRect(x,y+3,width,2);
+      this.counterLip.fillStyle(0x241a13,.16*alpha).fillRect(x,y+5,width,4);
+    }
     if(s.night>0)this.world.fillStyle(0x0a1435,s.night*.57).fillRect(s.bounds.x,s.bounds.y,s.bounds.width,s.bounds.height*.68);
     if(s.evening>0)this.world.fillStyle(0x8a3b26,s.evening*.18).fillRect(s.bounds.x,s.bounds.y,s.bounds.width,s.bounds.height*.68);
   }

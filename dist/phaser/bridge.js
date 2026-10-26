@@ -126,10 +126,31 @@ export class SceneBridge{
     const get=id=>document.getElementById(id),rect=id=>this.rect(get(id));
     const sprites=[];const add=(el,id,depth,motion)=>{const sprite=this.sprite(el,id,depth,motion);if(sprite)sprites.push(sprite);};
     const css=getComputedStyle(root),num=(key,fallback=0)=>Number.parseFloat(css.getPropertyValue(key))||fallback;
+    const receptionBounds=rect('reception');
+    const counterEl=get('reception')?.querySelector('.counter');let counter=this.rect(counterEl);
+    const counterClip=counterEl&&getComputedStyle(counterEl).clipPath.match(/^inset\(([\d.]+)%/);
+    if(counter&&counterClip){const cut=counter.height*Number(counterClip[1])/100;counter={...counter,y:counter.y+cut,height:counter.height-cut};}
+    if(state.story&&receptionBounds){
+      // All restoration images share the 1536x1024 camera and the back lip at
+      // source y635. A percentage of the viewport cuts through the floor when
+      // cover crops the image. Use the image's fitted coordinates instead.
+      const fit=Math.max(receptionBounds.width/1536,receptionBounds.height/1024);
+      const edge=receptionBounds.y+(receptionBounds.height-1024*fit)/2+635*fit;
+      const y=Math.min(receptionBounds.y+receptionBounds.height,Math.max(receptionBounds.y,edge));
+      counter={x:receptionBounds.x,y,width:receptionBounds.width,height:receptionBounds.y+receptionBounds.height-y};
+    }
     if(key==='Reception'){
       const visitor=get('visitor');
       const serial=state.offers?.[0]?.arrivalSerial??state.orders?.find(o=>o.accepted===false)?.arrivalSerial??state.story?.contractOfferPending??'';
       add(visitor,'visitor:'+serial+':'+visitor?.getAttribute('src'),15,'visitor');
+      const portrait=sprites.find(sprite=>sprite.id.startsWith('visitor:'));
+      if(portrait&&counter&&portrait.source){
+        const fit=Math.min(portrait.width/portrait.source.width,portrait.height/portrait.source.height);
+        const height=portrait.source.height*fit;
+        // Portraits end at the waist. Hide their lower forty percent behind
+        // the real wooden lip, instead of exposing the cut end above it.
+        portrait.y=counter.y-height*.1;
+      }
       add(get('bag')?.querySelector('img'),'counter-bag:'+serial,35,'bag');
       add(get('parcel')?.querySelector('img'),'counter-parcel:'+serial,35,'bag');
       add(get('dwarfStation')?.querySelector('img'),'borin-station',95);
@@ -152,9 +173,6 @@ export class SceneBridge{
     if(key==='Workbench')for(const id of ['work','table','sourceBox','inspector','targetPreview','parcelDrop']){
       const el=get(id);if(this.visible(el))surfaces[id]={rect:this.rect(el),open:el.classList.contains('source-open')||['inspector','targetPreview','parcelDrop'].includes(id)};
     }
-    const counterEl=get('reception')?.querySelector('.counter');let counter=this.rect(counterEl);
-    const counterClip=counterEl&&getComputedStyle(counterEl).clipPath.match(/^inset\(([\d.]+)%/);
-    if(counter&&counterClip){const cut=counter.height*Number(counterClip[1])/100;counter={...counter,y:counter.y+cut,height:counter.height-cut};}
     const snapshot={key,frame:this.frame,paused:!!state.paused||document.hidden,started:!!state.started,selected:state.selected??null,mode:state.mode,
       viewport:{width:root.clientWidth,height:root.clientHeight},
       bounds:key==='Menu'?{x:0,y:0,width:root.clientWidth,height:root.clientHeight}:key==='Tower'?rect('towerInterior'):key==='City'?rect('cityMap'):rect(key==='Workbench'?'work':'reception'),

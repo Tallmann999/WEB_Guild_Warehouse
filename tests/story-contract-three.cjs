@@ -38,7 +38,7 @@ async function packCurrent(p){
     const sold=[];
     for(let delivery=1;delivery<=3;delivery++){
       const order=await packCurrent(p);sold.push(...order.packed.map(x=>x.uid));await p.locator('#ship').click();
-      assert.equal(await p.evaluate(()=>state.gold),initial.gold+delivery*120,'Only a real shipment credits its 120 coins');
+      assert.equal(await p.evaluate(()=>state.gold),initial.gold+delivery*200,'Only a real shipment credits its 200 coins');
       assert.equal(await p.evaluate(()=>state.story.regularContracts.chef.deliveries),delivery);
       assert.deepEqual(await p.evaluate(()=>owned().map(x=>x.uid).sort((a,b)=>a-b)),initial.uids.filter(uid=>!sold.includes(uid)));
       await p.evaluate(o=>{Contracts.onDelivery(o);render();},order);
@@ -73,7 +73,7 @@ async function packCurrent(p){
     assert.equal(await p.locator(leaf).count(),1,'An older accepted parcel stays accessible after the historical series limit');
     assert.equal(await p.locator(leaf+' .agreement-delivery.checked').count(),3);
     const last=await packCurrent(p);await p.locator('#ship').click();await p.evaluate(()=>{state.story.elapsed+=100;Contracts.sync();render();save();});
-    assert.equal(await p.evaluate(()=>state.gold),legacy.gold+120);assert.equal(await p.evaluate(()=>state.story.regularContracts.chef.deliveries),8);
+    assert.equal(await p.evaluate(()=>state.gold),legacy.gold+200);assert.equal(await p.evaluate(()=>state.story.regularContracts.chef.deliveries),8);
     assert.equal(await p.evaluate(()=>Contracts.current('chef')||null),null);assert.equal(await p.locator(leaf).count(),0);
     assert.deepEqual(await p.evaluate(()=>owned().map(x=>x.uid).sort((a,b)=>a-b)),legacy.uids.filter(uid=>!last.packed.some(x=>x.uid===uid)));
     assert.deepEqual(errors,[]);console.log('PASS: old seven-delivery agreement retains its accepted partial parcel, reserves, disabled workers and exact inventory; no further repeat.');

@@ -12,6 +12,7 @@ const rankNames = ['Малая лавка','Надёжный поставщик'
 let state = freshState();
 let scale=1, drag=null, depth=100, suppressDropClick=false, toastTimer, modalCleanup=null, previousFocus=null, modalLocked=false;
 let audioContext=null, last=performance.now(), saveClock=0, recognitionFeedback=null;
+let modalResumePaused=false, recognitionSubjectUid=null, backgroundDialogSignature='', parcelAutomationView=null;
 
 function freshState(){return {version:1,day:1,seconds:CONFIG.daySeconds,started:false,ended:false,screen:'reception',mode:'sort',gold:CONFIG.startingGold,rep:0,stock:[],junk:[],bag:[],offers:[],schedule:[],order:null,collection:[],upgrade:false,uid:0,selected:null,activeCat:null,inspectCat:null,targetCat:0,paused:false,autoSorting:false,muted:true,dayIncome:0,daySpent:0,daySorted:0,dayErrors:0,dayOrders:0,totalOrders:0,dayBought:0,combo:0};}
 function rand(a,b){return Math.floor(a+Math.random()*(b-a+1));}
@@ -146,7 +147,7 @@ function resize(){
   game.style.left=Math.max(0,(viewportWidth-width*scale)/2)+'px';game.style.top=Math.max(0,(viewportHeight-height*scale)/2)+'px';
   game.style.transform='scale('+scale+')';
   const hud=game.querySelector(':scope > header')?.offsetHeight||77,footer=game.querySelector(':scope > footer')?.offsetHeight||70;
-  const tasks=0; // Letters occupy the right column, never the scene's height.
+  const tasks=0; // Floating letters reserve neither the scene's width nor its height.
   game.style.setProperty('--hud-height',hud+'px');game.style.setProperty('--tasks-height',tasks+'px');game.style.setProperty('--footer-height',footer+'px');
   game.style.setProperty('--work-heading-height',($('work')?.querySelector('.work-heading')?.offsetHeight||68)+'px');game.style.setProperty('--shelves-height',($('shelves')?.offsetHeight||228)+'px');
   game.style.setProperty('--scene-height',Math.max(1,height-hud-tasks-footer)+'px');
@@ -187,16 +188,21 @@ function positionItemTooltip(e){
   tip.style.top=Math.max(8,Math.min($('game').clientHeight-tip.offsetHeight-10,(e.clientY-rect.top)/scale+18))+'px';
 }
 function button(parent,label,action,id,disabled=false){const b=document.createElement('button');b.textContent=label;if(id)b.id=id;b.disabled=disabled;b.onclick=action;parent.append(b);return b;}
-function lockBackground(value){for(const child of $('game').children)if(!['modal','effects','toast','tooltip','arrivalSignal'].includes(child.id))child.inert=value;}
-function modal(html,{locked=false,wide=false,brief=false}={}){
+function modalIsOpen(){return !$('modal').classList.contains('hidden');}
+function isModalBlockingWork(){return modalIsOpen()&&$('modal').dataset.activity!=='background';}
+function isItemBeingExamined(uid){return uid!==null&&uid!==undefined&&recognitionSubjectUid===uid;}
+function lockBackground(value){for(const child of $('game').children)if(!['modal','effects','toast','tooltip'].includes(child.id))child.inert=value;}
+function modal(html,{locked=false,wide=false,brief=false,activity='pause',kind='information'}={}){
   if(state.autoSorting)return false;
+  if(!modalIsOpen())modalResumePaused=!!state.paused;
   modalCleanup?.();modalCleanup=null;cancelDrag();previousFocus=document.activeElement;
-  state.paused=true;modalLocked=locked;$('modalContent').innerHTML=html;
-  $('modal').className='modal'+(brief?' order-brief':'');$('modal').setAttribute('role','dialog');$('modal').setAttribute('aria-modal','true');
+  state.paused=modalResumePaused||activity!=='background';modalLocked=locked;$('modalContent').innerHTML=html;
+  $('modal').className='modal '+kind+'-dialog'+(brief?' order-brief':'');$('modal').dataset.activity=activity;$('modal').setAttribute('role','dialog');$('modal').setAttribute('aria-modal','true');
+  backgroundDialogSignature='';
   $('modal').querySelector('.modal-card').classList.toggle('wide',wide);hidden('closeModal',locked);lockBackground(true);
   const focus=$('modal').querySelector('button:not(.hidden):not(:disabled)');focus?.focus();updateHud();return true;
 }
-function closeModal(){if(modalLocked)return;modalCleanup?.();modalCleanup=null;hidden('modal',true);lockBackground(false);state.paused=false;last=performance.now();previousFocus?.isConnected&&previousFocus.focus();updateHud();save();}
+function closeModal(){if(modalLocked)return;const wasOpen=modalIsOpen();modalCleanup?.();modalCleanup=null;hidden('modal',true);delete $('modal').dataset.activity;lockBackground(false);state.paused=wasOpen?modalResumePaused:state.paused;modalResumePaused=false;backgroundDialogSignature='';last=performance.now();previousFocus?.isConnected&&previousFocus.focus();updateHud();save();}
 function forceCloseModal(){modalLocked=false;closeModal();}
 function updateDaylight(){
   const progress=Math.max(0,Math.min(1,1-state.seconds/CONFIG.daySeconds));
@@ -238,6 +244,10 @@ function updateHud(){
   Story.update();City.update();if(typeof Guild!=='undefined')Guild.update();
   if(typeof Tower!=='undefined')Tower.update();
   if($('taskRail'))hidden('taskRail',!state.started||state.screen==='tower'||City.isOpen()||taskRailEmpty());
+  const parcelAutomation=typeof Automation!=='undefined'&&Automation.enabled();
+  if(parcelAutomationView!==parcelAutomation){parcelAutomationView=parcelAutomation;renderOrderBoard();if(state.screen==='work')renderChecklist();}
+  refreshBackgroundDialog();
+  if(modalIsOpen())lockBackground(true);
 }
 function setScreen(screen,mode=state.mode){if(screen==='work'&&mode==='order'&&!orderAccepted()){openOrder();return;}cancelDrag();state.screen=screen;state.mode=mode;state.activeCat=null;state.inspectCat=null;state.selected=null;hidden('inspector',true);hidden('targetPreview',true);hidden('tooltip',true);render();save();}
 function render(){
@@ -440,7 +450,7 @@ function selectBox(cat){
 }
 function renderChecklist(){
   const el=$('checklist');hidden('checklist',!orderAccepted()||state.mode==='sort');el.innerHTML='';if(!orderAccepted()||state.mode==='sort')return;
-  const o=state.order;el.innerHTML=`<span class="quest-eyebrow">СПИСОК ПОСЫЛКИ</span><h3>${escapeQuestText(o.title||'Поручение')}</h3><p class="quest-recipient">Кому: <b>${escapeQuestText(customers[o.customer]?.[0]||'Заказчик')}</b><small>${escapeQuestText(customers[o.customer]?.[1]||'')}</small></p>`+o.recipe.map(r=>`<div class="check-row ${remaining(r)===0?'done':''}"><span class="checkmark">${remaining(r)===0?'✓':'○'}</span><img src="${asset(items[r.type].sprite)}" alt=""><span class="check-name">${items[r.type].name}</span><b>${r.count-remaining(r)}/${r.count}</b></div>`).join('')+`<div class="dispatch-status"><strong>Оплата: ${o.reward} монет</strong>${o.carried?' · перенесён':''}</div><div class="note-actions"></div>`;
+  const o=state.order;styleQuestSheet(el,o);el.innerHTML=`<span class="quest-eyebrow">СПИСОК ПОСЫЛКИ</span><h3>${escapeQuestText(o.title||'Поручение')}</h3><p class="quest-recipient">Кому: <b>${escapeQuestText(customers[o.customer]?.[0]||'Заказчик')}</b><small>${escapeQuestText(customers[o.customer]?.[1]||'')}</small></p>`+o.recipe.map(r=>`<div class="check-row ${remaining(r)===0?'done':''}"><span class="checkmark">${remaining(r)===0?'✓':'○'}</span><img src="${asset(items[r.type].sprite)}" alt=""><span class="check-name">${items[r.type].name}</span><b>${r.count-remaining(r)}/${r.count}</b></div>`).join('')+`<div class="dispatch-status"><strong>Оплата: ${o.reward} монет</strong>${o.carried?' · перенесён':''}</div><div class="note-actions"></div>`;
   const actions=el.querySelector('.note-actions');
   if(Story.enabled()&&Goblin.isAssigned(o)){renderParcelActions(actions,o);return;}
   if(state.mode==='sort')button(actions,'Собрать поручение',()=>setScreen('work','order'),'assembleNote').className='primary';
@@ -581,8 +591,11 @@ function renderOrderBoard(){
 }
 function showOrders(){
   if(!state.started||state.paused||state.autoSorting)return;
+  modal('',{wide:true,activity:'background',kind:'orders'});
+}
+function renderOrdersBook(){
   const list=allOrders().filter(o=>o.accepted!==false);
-  modal('<h2>Мои поручения · '+list.length+'</h2><div class="quest-book">'+(!list.length?'<p>Примите поручение у посетителя, когда подойдёт его очередь.</p>':'')+'</div>',{wide:true});
+  $('modalContent').innerHTML='<h2>Мои поручения · '+list.length+'</h2><div class="quest-book">'+(!list.length?'<p>Примите поручение у посетителя, когда подойдёт его очередь.</p>':'')+'</div>';
   for(const o of list){const article=document.createElement('article');article.className='quest-sheet';article.dataset.acceptedOrder=o.id;article.innerHTML=parcelContents(o);$('modalContent').querySelector('.quest-book').append(article);renderParcelActions(article,o);}
 }
 function openOrder(candidate){if(!state.started||state.paused||state.autoSorting)return;
@@ -739,15 +752,35 @@ function recognizeItem(type,instance){
   save();return {newlyKnown,wasUnknown,reward};
 }
 function openCollection(){
-  if(!state.started||state.paused)return;const available=new Set(owned().map(x=>x.type));
-  modal(`<img class="collection-ledger" src="assets/storage/ledger.png" alt=""><h2>Атлас находок</h2><p>Распознано ${state.collection.length} / ${items.length}. Изучение: +1 репутация и +5 монет.<br>Раскрытие неизвестной находки: ещё +7 монет. Товар остаётся у вас.</p><div class="collection-grid">${items.map(it=>{const known=state.collection.includes(it.id),secret=mysteryType(it.id)&&!known;return `<button class="collection-item ${known?'known':''} ${secret?'mystery-item':''}" data-type="${it.id}" ${available.has(it.id)?'':'disabled'}><img src="${asset(it.sprite)}" alt="${known?it.name:'Неизученная находка'}">${secret?'<i class="mystery-question">?</i>':''}<span>${known?it.name:'Название неизвестно'}</span><small>${known?'✓ Распознано':available.has(it.id)?'Изучить':'Нет в запасах'}</small></button>`;}).join('')}</div>`,{wide:true});
+  if(!state.started||state.paused)return;
+  modal('',{wide:true,activity:'background',kind:'collection'});
+}
+function renderCollection(){
+  const available=new Set(owned().map(x=>x.type));
+  $('modalContent').innerHTML=`<img class="collection-ledger" src="assets/storage/ledger.png" alt=""><h2>Атлас находок</h2><p>Распознано ${state.collection.length} / ${items.length}. Изучение: +1 репутация и +5 монет.<br>Раскрытие неизвестной находки: ещё +7 монет. Товар остаётся у вас.</p><div class="collection-grid">${items.map(it=>{const known=state.collection.includes(it.id),secret=mysteryType(it.id)&&!known;return `<button class="collection-item ${known?'known':''} ${secret?'mystery-item':''}" data-type="${it.id}" ${available.has(it.id)?'':'disabled'}><img src="${asset(it.sprite)}" alt="${known?it.name:'Неизученная находка'}">${secret?'<i class="mystery-question">?</i>':''}<span>${known?it.name:'Название неизвестно'}</span><small>${known?'✓ Распознано':available.has(it.id)?'Изучить':'Нет в запасах'}</small></button>`;}).join('')}</div>`;
   $('modalContent').querySelectorAll('[data-type]').forEach(b=>b.onclick=()=>openCleaning(Number(b.dataset.type)));
 }
-function openCleaning(type,instance=owned().find(x=>x.type===type&&isUnknown(x))){
+function refreshBackgroundDialog(){
+  if(!modalIsOpen()||$('modal').dataset.activity!=='background')return;
+  const collection=$('modal').classList.contains('collection-dialog'),orders=$('modal').classList.contains('orders-dialog');
+  if(!collection&&!orders)return;
+  const signature=collection?JSON.stringify([state.collection,[...new Set(owned().map(x=>x.type))].sort((a,b)=>a-b)]):JSON.stringify(allOrders().filter(o=>o.accepted!==false).map(o=>[o.id,o.reward,o.packed.map(x=>x.uid),o.assignedTo,o.fulfillmentReady,state.goblin?.enabled,state.goblin?.hired,Automation.enabled()]));
+  if(backgroundDialogSignature===signature)return;
+  backgroundDialogSignature=signature;
+  const content=$('modalContent'),scroll=content.scrollTop,focus=document.activeElement;
+  const orderId=focus.closest?.('[data-accepted-order]')?.dataset.acceptedOrder;
+  const selector=focus.id?'#'+CSS.escape(focus.id):focus.dataset.type?'[data-type="'+focus.dataset.type+'"]':orderId&&focus.dataset.parcelAction?'[data-accepted-order="'+orderId+'"] [data-parcel-action="'+focus.dataset.parcelAction+'"]':null;
+  if(collection)renderCollection();else renderOrdersBook();
+  content.scrollTop=scroll;
+  if(!focus.isConnected){const next=selector&&content.querySelector(selector);(next||$('closeModal')).focus({preventScroll:true});}
+}
+function openCleaning(type,instance=owned().find(x=>x.type===type&&isUnknown(x))||owned().find(x=>x.type===type)){
+  if(!instance||!owned().some(x=>x.uid===instance.uid)){toast('Этой находки уже нет в запасах лавки.');return;}
   const it=items[type],done=state.collection.includes(type);
-  modal(`<h2 id="recognitionTitle">${done?it.name:'Изучение находки'}</h2><p>${done?'Вы распознали эту находку и записали её название в атлас.':'Зажмите левую кнопку мыши и водите по предмету, чтобы стереть налёт. Или нажимайте «Распознать».'}</p><div class="clean-stage"><img src="${asset(it.sprite)}" alt="${done?it.name:'Неизученная находка'}"><canvas id="dirt" width="360" height="270" aria-label="Стирайте налёт с находки"></canvas></div><div class="clean-meter"><i id="cleanBar" style="width:${done?100:0}%"></i></div><p id="cleanStatus">${done?'✓ Распознано: '+it.name:'Очищено 0%'}</p><div class="modal-actions recognition-actions"><button id="cleanKey" class="primary" title="Очистить следующий участок предмета">Распознать</button><button id="stashUnknown" ${!instance||!isUnknown(instance)||!state.upgrade||state.junk.includes(instance)?'disabled':''}>Отложить в Диковинки</button><button id="backCollection">К коллекции</button></div>`);
+  modal(`<h2 id="recognitionTitle">${done?it.name:'Изучение находки'}</h2><p>${done?'Вы распознали эту находку и записали её название в атлас.':'Зажмите левую кнопку мыши и водите по предмету, чтобы стереть налёт. Или нажимайте «Распознать».'}</p><div class="clean-stage"><img src="${asset(it.sprite)}" alt="${done?it.name:'Неизученная находка'}"><canvas id="dirt" width="360" height="270" aria-label="Стирайте налёт с находки"></canvas></div><div class="clean-meter"><i id="cleanBar" style="width:${done?100:0}%"></i></div><p id="cleanStatus">${done?'✓ Распознано: '+it.name:'Очищено 0%'}</p><div class="modal-actions recognition-actions"><button id="cleanKey" class="primary" title="Очистить следующий участок предмета">Распознать</button><button id="stashUnknown" ${!instance||!isUnknown(instance)||!state.upgrade||state.junk.includes(instance)?'disabled':''}>Отложить в Диковинки</button><button id="backCollection">К коллекции</button></div>`,{activity:'background',kind:'recognition'});
+  recognitionSubjectUid=instance.uid;
   const canvas=$('dirt'),ctx=canvas.getContext('2d',{willReadFrequently:true});let down=false,complete=done,strokes=0;
-  modalCleanup=()=>{recognitionFeedback=null;};
+  modalCleanup=()=>{recognitionFeedback=null;recognitionSubjectUid=null;};
   if(!done){ctx.fillStyle='#736650';ctx.fillRect(0,0,360,270);for(let i=0;i<150;i++){ctx.fillStyle=i%2?'#8f7d60':'#5d513f';ctx.beginPath();ctx.arc(Math.random()*360,Math.random()*270,rand(1,5),0,7);ctx.fill();}}
   function check(){if(complete)return;const data=ctx.getImageData(0,0,360,270).data;let clear=0;for(let i=3;i<data.length;i+=16)if(data[i]<50)clear++;const pct=Math.round(clear/(data.length/16)*100);$('cleanBar').style.width=pct+'%';$('cleanStatus').textContent=`Очищено ${pct}%`;if(pct>=85){complete=true;ctx.clearRect(0,0,360,270);recognizeItem(type,instance);$('cleanBar').style.width='100%';$('recognitionTitle').textContent=it.name;$('cleanKey').disabled=true;$('cleanKey').textContent='Распознано';$('stashUnknown').disabled=true;$('backCollection').classList.add('hidden');recognitionFeedback={elapsed:0,title:$('recognitionTitle')};render();if(state.inspectCat!==null)renderInspection();save();beep();}}
   function erase(x,y){if(complete)return;ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(x,y,33,0,Math.PI*2);ctx.fill();check();}
@@ -757,7 +790,7 @@ function openCleaning(type,instance=owned().find(x=>x.type===type&&isUnknown(x))
   $('stashUnknown').onclick=()=>{if(!instance||!isUnknown(instance)||!state.upgrade||state.junk.includes(instance))return;state.bag=state.bag.filter(x=>x!==instance);state.stock=state.stock.filter(x=>x!==instance);if(state.unknownTray)state.unknownTray=state.unknownTray.filter(x=>x!==instance);delete instance.boxPos;state.junk.push(instance);closeModal();render();if(state.inspectCat!==null)renderInspection();save();};
   $('backCollection').onclick=()=>{closeModal();openCollection();};
 }
-function openRanks(){if(state.paused)return;modal(`<h2>Имя вашей лавки</h2><p>Репутация: ${state.rep}. За выданный заказ +4.<br>В этой истории доступны первые три ранга.</p><div class="rank-list">${rankNames.map((name,i)=>`<div class="rank-row ${i===rank()?'current':''} ${i>2?'locked':''}"><span>${i+1}. ${name}</span><span>${i>2?'🔒 позже':i===rank()?'Ваш ранг':i<rank()?'✓':i*12+' реп.'}</span></div>`).join('')}</div>`);}
+function openRanks(){if(state.paused)return;modal(`<h2>Имя вашей лавки</h2><p>Репутация: ${state.rep}. За выданный заказ +4.<br>В этой истории доступны первые три ранга.</p><div class="rank-list">${rankNames.map((name,i)=>`<div class="rank-row ${i===rank()?'current':''} ${i>2?'locked':''}"><span>${i+1}. ${name}</span><span>${i>2?'🔒 позже':i===rank()?'Ваш ранг':i<rank()?'✓':i*12+' реп.'}</span></div>`).join('')}</div>`,{activity:'background',kind:'book'});}
 function showGoldAd(){
   if(!state.started||state.paused||state.autoSorting||state.ended||!state.goldAdUnlocked)return;
   modal('<h2>Пополнить казну · +15 монет</h2><p>Тестовый просмотр рекламы · 2 секунды.<br>Настоящая реклама пока не подключена.</p><button id="claimAdGold" class="primary" disabled>Просмотр…</button>');
@@ -807,7 +840,7 @@ async function flyToShelf(item,cat){
 }
 function hasSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));return s?.version===1&&s.started;}catch{return false;}}
 function loadGame(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s?.version!==1||!Array.isArray(s.stock)||!Array.isArray(s.bag))return;BagPour.afterLoad();City.close();state={...freshState(),...s,paused:false,autoSorting:false,selected:null,inspectCat:null,activeCat:null};const repaired=repairTableLayout(state.bag);restoreOrders();depth=Math.max(100,...owned().map(x=>x.depth||0));render();if(Story.enabled())Story.afterLoad();else if(state.ended)showSummary();if(repaired)save();}catch{toast('Не удалось прочитать сохранение. Можно начать заново.');}}
-function help(){if(state.paused)return;modal('<h2>Как работает лавка</h2><div class="rules"><b>Закупка.</b> Купите мешок за 10 монет. Содержимое заранее неизвестно.<br><b>Порядок.</b> Перетаскивайте вещи на полки. Или нажмите вещь, затем коробку. Ошибка подскажет категорию.<br><b>Заказ.</b> Листок справа. Недостающее появится в новых мешках. Откройте коробку и отправляйте нужное в посылку.<br><b>Диковинки.</b> За 20 монет купите временную коробку и убирайте остаток мешка одним действием.<br><b>Атлас.</b> Очистите находку и сохраните её изображение. Товар остаётся для продажи.<br><b>Вечер.</b> Новые приходы прекращаются; закончите дела и нажмите «Закончить день».</div>');}
+function help(){if(state.paused)return;modal('<h2>Как работает лавка</h2><div class="rules"><b>Закупка.</b> Купите мешок за 10 монет. Содержимое заранее неизвестно.<br><b>Порядок.</b> Перетаскивайте вещи на полки. Или нажмите вещь, затем коробку. Ошибка подскажет категорию.<br><b>Заказ.</b> Листок справа. Недостающее появится в новых мешках. Откройте коробку и отправляйте нужное в посылку.<br><b>Диковинки.</b> За 20 монет купите временную коробку и убирайте остаток мешка одним действием.<br><b>Атлас.</b> Очистите находку и сохраните её изображение. Товар остаётся для продажи.<br><b>Вечер.</b> Новые приходы прекращаются; закончите дела и нажмите «Закончить день».<br><b>Фоновая работа.</b> Распознавание, коллекция, книги и карта не останавливают включённых помощников. Пауза, настройки, скрытая вкладка, сюжетный выбор и утренний ремонт останавливают торговлю. Автоприёмка покупает мешки и принимает обычные посылки после основания гильдии и её включения.</div>',{activity:'background',kind:'book'});}
 
 function setup(){
   const sky=document.createElement('div');sky.id='daylight';sky.setAttribute('aria-hidden','true');sky.innerHTML='<i class="sky-morning"></i><i class="sky-day"></i><i class="sky-evening"></i><i class="sky-night"></i>';$('game').querySelector(':scope > header').prepend(sky);

@@ -12,6 +12,12 @@
 .phaser-ready.viewing-city #reception,.phaser-ready.viewing-city #work{visibility:hidden!important}
 .phaser-ready img[data-phaser-art]{opacity:0!important;animation:none!important;transition:none!important}
 .phaser-ready #reception #bag::before{display:none}
+/* Native motion is the sole arrival animation. Measuring the old CSS arrive
+   transform on the first frame otherwise gives the tween a moving target. */
+#game.phaser-ready #reception :is(#visitor,#bag,#parcel),#game.phaser-ready #reception :is(#bag,#parcel) img{animation:none!important}
+/* This source rectangle supplies portrait scale. SceneBridge anchors its
+   native image to the real back lip so the waist stays behind the wood. */
+#game.phaser-ready #reception #visitor{bottom:calc(var(--scene-height,600px)*.1);width:var(--scene-height,600px);height:calc(var(--scene-height,600px)*.8);max-width:720px;max-height:610px;object-position:center bottom}
 .phaser-ready #work:has(#inspector:not(.hidden)) #pile .empty-pile,.phaser-ready #work:has(#inspector:not(.hidden)) #pile .mystery-question{visibility:hidden}
 .phaser-ready #inspector .inspection-heading{background:#251b11cc}
 .phaser-ready #inspector .inspection-heading h2{color:#f1d39b}
@@ -34,3 +40,7 @@
    right of the status text, clear of both the sack and the label background. */
 .story-mode #goblinStation{right:37px;bottom:101px;width:291px;min-height:98px;padding:13px 137px 12px 12px;border:0;border-radius:0;box-shadow:none;background:linear-gradient(260deg,#3e302200 28%,#263121ed 48%,#263121ed 95%,#26312100)}
 #goblinStation .goblin-portrait{left:auto;right:-1px;bottom:0;width:143px;height:186px;object-fit:contain;object-position:center bottom}
+/* Cut the control itself out of its decorative halo. A negative pseudo depth
+   alone still paints over the background of an isolated button stacking box. */
+#game :where(button,[role="button"])::after{inset:-27px;padding:23px;border-radius:0;filter:blur(1.2px);background:radial-gradient(ellipse,#ffe7a180 15%,#ffd35c55 38%,#efb32d22 53%,transparent 72%),repeating-conic-gradient(from 7deg,transparent 0deg 8deg,#ffe39b99 10deg,#ffd15d00 14deg 30deg);mask:linear-gradient(#000 0 0) content-box,radial-gradient(ellipse,#000 28%,#000c 53%,transparent 73%);mask-composite:exclude;transform:none!important}
+@keyframes goldenAura{0%,100%{opacity:.64}50%{opacity:.94}}

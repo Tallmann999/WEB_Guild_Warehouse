@@ -13,11 +13,12 @@ html,body{width:100%;height:100%;min-height:0;max-height:100%;overflow:hidden!im
 #game>footer nav{width:auto;justify-content:flex-end;flex-wrap:nowrap;gap:6px;margin-left:auto}
 #game>footer nav button{font-size:13px;padding:8px 10px;min-height:34px;white-space:nowrap}
 #game>footer #stepHint{display:block;min-width:0;max-width:420px;flex:1;font-size:12px;line-height:1.2}
-#taskRail{left:auto;right:8px;top:calc(var(--hud-height,74px) + 8px);bottom:calc(var(--footer-height,54px) + 8px);width:calc(var(--task-width,300px) - 16px);padding:30px 8px;gap:0;max-height:none;min-height:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid #9c7c4977;border-radius:6px;background:#251f18c9}
+#taskRail{left:auto;right:8px;top:calc(var(--hud-height,74px) + 8px);bottom:calc(var(--footer-height,54px) + 8px);width:calc(var(--task-width,300px) - 16px);padding:30px 8px;gap:0;max-height:none;min-height:0;display:flex;flex-direction:column;overflow:hidden;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:none}
 #game:has(#reception:not(.hidden)) #taskRail{bottom:calc(var(--footer-height,54px) + var(--worker-height,160px) + 30px)}
+#game:has(#work:not(.hidden)) #taskRail{top:calc(var(--hud-height,74px) + 54px);bottom:auto;height:280px;padding-top:24px;padding-bottom:24px}
 .task-rail-heading{display:none}
 .task-letters{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;align-items:stretch;gap:10px;overflow:hidden;scrollbar-width:none}
-#taskRail .order-card,#taskRail .contract-offer-leaf{flex:0 0 auto;width:100%;min-width:0;min-height:0;max-height:220px!important;padding:8px 10px!important;gap:2px!important;overflow:hidden!important}
+#taskRail .order-card,#taskRail .contract-offer-leaf{flex:0 0 auto;width:100%;min-width:0;min-height:0;max-height:none!important;padding:8px 10px!important;gap:2px!important;overflow:visible!important;pointer-events:auto}
 #taskRail .order-card>*,#taskRail .contract-offer-leaf>*{flex-shrink:0}
 #taskRail .quest-eyebrow,#taskRail .agreement-leaf-kind{font-size:8px;line-height:1.1;letter-spacing:.8px}
 #taskRail h3{font-size:15px;line-height:18px;min-height:18px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -37,10 +38,10 @@ html,body{width:100%;height:100%;min-height:0;max-height:100%;overflow:hidden!im
 #taskRail .contract-offer-leaf .quest-eyebrow{padding-right:55px}
 #taskRail .contract-offer-leaf[data-order-id] .quest-eyebrow,#taskRail .contract-offer-leaf[data-order-id] .agreement-leaf-info,#taskRail .contract-offer-leaf .agreement-leaf-compact{display:none}
 #taskRail #contractOfferBoard.work-agreements .agreement-leaf-kind{display:block}
-#taskRail #taskPrev,#taskRail #taskNext{position:absolute;left:50%;right:auto;transform:translateX(-50%);width:70px;height:24px;padding:0;min-height:0;font-size:25px;line-height:20px}
+#taskRail #taskPrev,#taskRail #taskNext{position:absolute;left:50%;right:auto;transform:translateX(-50%);width:70px;height:24px;padding:0;min-height:0;font-size:25px;line-height:20px;pointer-events:auto}
 #taskRail #taskPrev{top:3px;bottom:auto}#taskRail #taskNext{top:auto;bottom:3px}#taskPageStatus{position:absolute;right:8px;bottom:8px;font-size:9px;color:#d2bc8d;pointer-events:none}
 #taskRail:not(.has-pages) #taskPrev,#taskRail:not(.has-pages) #taskNext{visibility:hidden}
-#game>#work{right:var(--task-width,300px)}
+#game>#work{right:0}
 #work .work-heading{height:48px;min-height:48px;max-height:48px;flex-wrap:nowrap;padding:7px 24px;gap:10px}
 #work .work-heading>div:not(#workProgress){min-width:200px;flex:1;max-width:none}#work .work-heading h1{font-size:18px;margin:2px 0}
 #work .work-heading #workProgress{font-size:13px;margin-left:auto;max-width:130px}#work .work-heading #autoSortButton{min-width:135px;font-size:13px}
@@ -55,6 +56,10 @@ html,body{width:100%;height:100%;min-height:0;max-height:100%;overflow:hidden!im
 #work #table,#work.fulfillment #table{position:absolute;left:50%;right:auto;top:auto;bottom:24px;transform:translateX(-50%);width:calc((var(--frame-width,1280px) - 56px)*.7);height:calc((100% - 244px)*.7);min-height:306px;max-height:calc(100% - 344px);margin:0;padding:0;border-width:9px}
 #work.fulfillment #table{display:grid;grid-template-columns:180px minmax(210px,1fr) 270px;gap:10px;padding:8px;align-items:stretch}
 #work.fulfillment #boxZone,#work.fulfillment #sourceBox{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:100%;height:100%;min-width:0;min-height:0;grid-row:1;grid-column:auto}
+/* The parcel opens towards the free left edge of the game. Keep the source
+   crate and checklist in their existing columns, and keep sorting centred. */
+#work.fulfillment #table{--parcel-left-extension:calc((var(--frame-width,1280px) - (var(--frame-width,1280px) - 56px)*.7)/2 - 7px);border-left-color:transparent;outline:none;box-shadow:none}
+#work.fulfillment #boxZone{width:calc(100% + var(--parcel-left-extension));margin-left:calc(-1*var(--parcel-left-extension))}
 #work.fulfillment #parcelDrop{width:100%;height:100%;min-height:0}
 #work.fulfillment #checklist{grid-column:3;grid-row:1;align-self:start;max-height:none!important;min-height:0;height:auto;padding:10px!important;gap:3px;font-size:13px}
 #work #checklist h3{font-size:16px;line-height:1.1;margin:0}
@@ -86,10 +91,13 @@ html,body{width:100%;height:100%;min-height:0;max-height:100%;overflow:hidden!im
 #dwarfStation .dwarf-progress,#goblinStation .goblin-progress{margin-top:5px}
 #dwarfStation::before{left:126px;right:0;top:0}#goblinStation::before{left:0;right:126px;top:0}
 #restartTutorial{display:none}
-#game .modal{position:absolute;inset:0;padding:14px;overflow:hidden;align-items:center;justify-items:center}
+#game .modal{position:absolute;inset:0;padding:14px;overflow:hidden;align-items:center;justify-items:center;z-index:1200}
 #game .modal .modal-card,#game .modal .modal-card.wide,#game.story-mode .modal-card:has(.regular-contracts),#game .modal.order-brief .modal-card{width:min(1040px,calc(100% - 28px));max-width:1040px;height:auto;max-height:calc(100% - 28px)!important;min-height:0;overflow:hidden!important;display:flex;flex-direction:column;padding:26px 32px}
 #game .modal.order-brief .modal-card{width:620px}
 #modalContent{min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;padding:0 1px;max-height:100%}
+/* These short dialogs already fit. Their external button rays must not create
+   a scrollbar; real inventory and long books keep their bounded scrolling. */
+#modalContent:has(#restorationOffer),#modalContent:has(#recognitionTitle){overflow:clip}
 #closeModal{z-index:5;flex:none}
 #game .modal-card:has(#inheritanceLetter),#game .modal-card:has(#guildFounding),#game .modal-card:has(#guildCharter){width:680px;padding:26px 36px}
 #game .modal-card:has(#restorationOffer){width:760px}
@@ -103,3 +111,14 @@ html,body{width:100%;height:100%;min-height:0;max-height:100%;overflow:hidden!im
 #cityMap .city-shop-entry{left:18%}#cityMap .city-tower-entry{font-size:16px;min-width:125px}
 .guild-city-caption{left:50%;top:48px;transform:translateX(-50%);width:590px;padding:20px 25px}
 .tower-heading{min-height:70px;padding:10px 22px}.tower-visit-caption{left:20px;right:20px;bottom:15px;flex-wrap:nowrap;gap:20px}.tower-visit-caption p{min-width:0;flex:1}.tower-visit-caption button{margin:0}
+
+/* Only the individual sheets have a surface. Rarity colours are visual and
+   never change stock, prices, deadlines or the three-delivery agreement. */
+#taskRail [data-quest-rarity="unique"],.quest-sheet[data-quest-rarity="unique"],#checklist[data-quest-rarity="unique"],#contractOfferSheet[data-quest-rarity="unique"],.parcel-receipt[data-quest-rarity="unique"]{
+  background-color:#f2d788!important;background-image:linear-gradient(105deg,#eebd4570,#ffe7a338 48%,#d99b2a60),url('assets/quest-parchment.png')!important;background-blend-mode:multiply,normal;border:2px solid #e5b63b!important;box-shadow:inset 0 0 0 1px #fff2bcaa,0 0 12px #e8b52b45,0 4px 8px #24160966;
+}
+#taskRail [data-quest-rarity="special"],.quest-sheet[data-quest-rarity="special"],#checklist[data-quest-rarity="special"],#contractOfferSheet[data-quest-rarity="special"],.parcel-receipt[data-quest-rarity="special"]{
+  background-color:#ddc9ef!important;background-image:linear-gradient(105deg,#b78ade75,#e2c9f33b 48%,#9160c369),url('assets/quest-parchment.png')!important;background-blend-mode:multiply,normal;border:2px solid #a573d9!important;box-shadow:inset 0 0 0 1px #f0ddff99,0 0 13px #aa71dc55,0 4px 8px #24160966;
+}
+#taskRail .parcel-ready,.quest-sheet.parcel-ready{border-color:#91ce66!important}
+#taskRail .parcel-assistant-working,.quest-sheet.parcel-assistant-working{border-color:#8bcb64!important}

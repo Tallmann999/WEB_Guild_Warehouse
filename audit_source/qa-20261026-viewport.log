@@ -1,0 +1,7 @@
+PASS 1920x920: real start/letter/bag,8 original sorts, full royal15+ship,7-letter rail,city/tower returns and no page scroll with1920to1280 resize.
+Screenshot saved separately because Windows could not open the previous PNG: audit_source/fit-1366x768-sorting-rerun-1792988315631.png
+PASS 1366x768: real start/letter/bag,8 original sorts, full royal15+ship,7-letter rail,city/tower returns and no page scroll.
+Screenshot saved separately because Windows could not open the previous PNG: audit_source/fit-1280x720-sorting-rerun-1792988339706.png
+PASS 1280x720: real start/letter/bag,8 original sorts, full royal15+ship,7-letter rail,city/tower returns and no page scroll.
+Screenshot saved separately because Windows could not open the previous PNG: audit_source/fit-1024x768-sorting-rerun-1792988363722.png
+PASS 1024x768: real start/letter/bag,8 original sorts, full royal15+ship,7-letter rail,city/tower returns and no page scroll.
