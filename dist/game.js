@@ -87,7 +87,14 @@ function advanceVisitorGap(dt){
   const before=state.visitorCooldown||0;state.visitorCooldown=Math.max(0,before-dt);
   if(before>0&&!state.visitorCooldown&&state.screen==='reception')renderReception();
 }
+function normalizeAdventurerVisitors(){
+  // Retired portraits keep their saved guest, original loot and queue position.
+  for(const queue of [state.offers,state.schedule,state.story?.deferredSupplierOffers]){
+    for(const offer of queue||[])if(offer?.visitor===5||offer?.visitor===6)offer.visitor-=5;
+  }
+}
 function restoreOrders(){
+  normalizeAdventurerVisitors();
   state.orders??=[];
   if(state.order){const saved=state.orders.find(o=>o.id&&o.id===state.order.id);if(saved)state.order=saved;else state.orders.push(state.order);}
   state.orderUid=Math.max(state.orderUid||0,...state.orders.map(o=>o.id||0));

@@ -1,0 +1,2 @@
+# Local asset-preview process output; source PNGs and QA images stay tracked.
+/dist/assets/New Sprites/previews/preview-server*.log

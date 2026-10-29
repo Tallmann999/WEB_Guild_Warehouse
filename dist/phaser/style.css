@@ -15,9 +15,8 @@
 /* Native motion is the sole arrival animation. Measuring the old CSS arrive
    transform on the first frame otherwise gives the tween a moving target. */
 #game.phaser-ready #reception :is(#visitor,#bag,#parcel),#game.phaser-ready #reception :is(#bag,#parcel) img{animation:none!important}
-/* This source rectangle supplies portrait scale. SceneBridge anchors its
-   native image to the real back lip so the waist stays behind the wood. */
-#game.phaser-ready #reception #visitor{bottom:calc(var(--scene-height,600px)*.1);width:var(--scene-height,600px);height:calc(var(--scene-height,600px)*.8);max-width:720px;max-height:610px;object-position:center bottom}
+/* Reception's source-registered portrait size and anchor come from the shared
+   reception layout; DOM remains the semantic source for native takeover. */
 .phaser-ready #work:has(#inspector:not(.hidden)) #pile .empty-pile,.phaser-ready #work:has(#inspector:not(.hidden)) #pile .mystery-question{visibility:hidden}
 .phaser-ready #inspector .inspection-heading{background:#251b11cc}
 .phaser-ready #inspector .inspection-heading h2{color:#f1d39b}

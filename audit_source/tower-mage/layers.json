@@ -1,0 +1,70 @@
+{
+  "generator": "built-in image_gen",
+  "processing": "Crop empty margins using alpha>12 for visible bounds with eight source pixels of allowance, then add four transparent padding pixels. Source alpha inside the crop is unchanged. No color key, matte, repainting or alpha replacement.",
+  "layers": [
+    {
+      "name": "room",
+      "sourceWidth": 1672,
+      "sourceHeight": 941,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 1672,
+        "height": 941
+      },
+      "width": 1672,
+      "height": 941,
+      "transparentPixels": 0,
+      "partialAlphaPixels": 0,
+      "path": "dist/assets/tower-mage/room.png"
+    },
+    {
+      "name": "workbench",
+      "sourceWidth": 2182,
+      "sourceHeight": 721,
+      "crop": {
+        "left": 0,
+        "top": 178,
+        "width": 2180,
+        "height": 462
+      },
+      "width": 2188,
+      "height": 470,
+      "transparentPixels": 807093,
+      "partialAlphaPixels": 765918,
+      "path": "dist/assets/tower-mage/workbench.png"
+    },
+    {
+      "name": "mechanism",
+      "sourceWidth": 1774,
+      "sourceHeight": 887,
+      "crop": {
+        "left": 45,
+        "top": 24,
+        "width": 1681,
+        "height": 795
+      },
+      "width": 1689,
+      "height": 803,
+      "transparentPixels": 849371,
+      "partialAlphaPixels": 723097,
+      "path": "dist/assets/tower-mage/mechanism.png"
+    },
+    {
+      "name": "orb",
+      "sourceWidth": 1122,
+      "sourceHeight": 1402,
+      "crop": {
+        "left": 150,
+        "top": 116,
+        "width": 837,
+        "height": 1180
+      },
+      "width": 845,
+      "height": 1188,
+      "transparentPixels": 950422,
+      "partialAlphaPixels": 622090,
+      "path": "dist/assets/tower-mage/orb.png"
+    }
+  ]
+}

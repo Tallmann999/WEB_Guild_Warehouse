@@ -1,0 +1,66 @@
+{
+  "width": 1536,
+  "height": 1024,
+  "states": [
+    {
+      "state": "derelict",
+      "day": {
+        "source": "../../reception-derelict.png",
+        "generation": "sources/derelict-day-generated.png",
+        "file": "backgrounds/derelict-day.png",
+        "originalPixelsUnchangedThroughY": 599,
+        "transitionRows": [
+          600,
+          623
+        ],
+        "reconstructedFloorFromY": 624
+      },
+      "night": {
+        "source": "backgrounds/derelict-day.png",
+        "generation": "sources/derelict-night-generated.png",
+        "file": "backgrounds/derelict-night.png",
+        "edit": "ImageGen lighting-only edit, same camera and layout"
+      }
+    },
+    {
+      "state": "bare-walls",
+      "day": {
+        "source": "../../reception-bare-walls.png",
+        "generation": "sources/bare-walls-day-generated.png",
+        "file": "backgrounds/bare-walls-day.png",
+        "originalPixelsUnchangedThroughY": 599,
+        "transitionRows": [
+          600,
+          623
+        ],
+        "reconstructedFloorFromY": 624
+      },
+      "night": {
+        "source": "backgrounds/bare-walls-day.png",
+        "generation": "sources/bare-walls-night-generated.png",
+        "file": "backgrounds/bare-walls-night.png",
+        "edit": "ImageGen lighting-only edit, same camera and layout"
+      }
+    },
+    {
+      "state": "guild-furnished",
+      "day": {
+        "source": "../../reception-guild-furnished.png",
+        "generation": "sources/guild-furnished-day-generated.png",
+        "file": "backgrounds/guild-furnished-day.png",
+        "originalPixelsUnchangedThroughY": 599,
+        "transitionRows": [
+          600,
+          623
+        ],
+        "reconstructedFloorFromY": 624
+      },
+      "night": {
+        "source": "backgrounds/guild-furnished-day.png",
+        "generation": "sources/guild-furnished-night-generated.png",
+        "file": "backgrounds/guild-furnished-night.png",
+        "edit": "ImageGen lighting-only edit, same camera and layout"
+      }
+    }
+  ]
+}

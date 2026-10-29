@@ -7,12 +7,24 @@ const Tower=(()=>{
   function setup(){
     if($('towerInterior'))return;
     const interior=document.createElement('section');interior.id='towerInterior';interior.className='hidden';interior.setAttribute('aria-label','Внутри старой башни');
-    interior.innerHTML='<img id="towerArt" src="assets/tower-interior.png" alt="Каменная мастерская башни, фиолетовый шар и старый механизм из костей"><div class="tower-heading"><div><span>СТАРАЯ БАШНЯ · ВАШЕ ВЛАДЕНИЕ</span><h2>Старая мастерская</h2></div><button id="towerClose">Вернуться в город</button></div><div class="tower-visit-caption"><p>Фиолетовый шар и древний костяной механизм сохранились в старой мастерской.</p><button id="towerReturnShop" class="primary">Вернуться в лавку</button></div>';
+    interior.innerHTML='<div id="towerArt" class="tower-art-layers" role="img" aria-label="Два арочных окна над деревянным столом с ящиками. Слева старый костяной механизм, рядом фиолетовый шар на подставке."></div><div class="tower-heading"><div><span>СТАРАЯ БАШНЯ · ВАШЕ ВЛАДЕНИЕ</span><h2>Башня мага</h2></div><button id="towerClose">Вернуться в город</button></div><div class="tower-visit-caption"><p>На старом деревянном столе — костяной механизм и фиолетовый шар.</p><button id="towerReturnShop" class="primary">Вернуться в лавку</button></div>';
+    for(const layer of window.LootkeeperTowerArt.layers){
+      const image=document.createElement('img');image.src=layer.path;image.alt='';image.draggable=false;image.dataset.towerLayer=layer.id;image.style.zIndex=layer.depth;
+      interior.querySelector('#towerArt').append(image);
+    }
     $('game').append(interior);
+    new ResizeObserver(updateArt).observe(interior);updateArt();
     $('towerClose').onclick=()=>close('city');$('towerReturnShop').onclick=()=>close('reception');
     document.addEventListener('keydown',e=>{
       if(e.key==='Escape'&&isOpen()&&$('modal').classList.contains('hidden')){e.preventDefault();e.stopImmediatePropagation();close('city');}
     },true);
+  }
+  function updateArt(){
+    const interior=$('towerInterior');if(!interior?.clientWidth||!interior.clientHeight)return;
+    for(const layer of window.LootkeeperTowerArt.layout({x:0,y:0,width:interior.clientWidth,height:interior.clientHeight})){
+      const image=interior.querySelector('[data-tower-layer="'+layer.id+'"]');
+      image.style.left=(layer.x-layer.width/2)+'px';image.style.top=(layer.y-layer.height/2)+'px';image.style.width=layer.width+'px';image.style.height=layer.height+'px';
+    }
   }
   function open(){
     if(!state.started||state.paused||state.ended||state.autoSorting||document.hidden||!state.city?.towerOwned||Restoration.active()||BagPour.active())return false;
@@ -33,6 +45,7 @@ const Tower=(()=>{
   function update(){
     const active=state.started&&isOpen();
     $('towerInterior')?.classList.toggle('hidden',!active);$('game')?.classList.toggle('viewing-tower',!!active);
+    if(active)updateArt();
   }
   function afterLoad(){
     if(state.screen==='tower'&&!state.city?.towerOwned){state.screen='reception';state.mode='sort';render();}

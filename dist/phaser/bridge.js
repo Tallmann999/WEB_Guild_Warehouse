@@ -1,4 +1,5 @@
 import {textureKey} from './assets.js';
+import {receptionLayout,visitorLayout} from './reception-layout.js';
 
 // The sole adapter between simulation/DOM input and disposable Phaser views.
 // A scene receives plain snapshots, never a reference to mutable game state.
@@ -127,30 +128,22 @@ export class SceneBridge{
     const sprites=[];const add=(el,id,depth,motion)=>{const sprite=this.sprite(el,id,depth,motion);if(sprite)sprites.push(sprite);};
     const css=getComputedStyle(root),num=(key,fallback=0)=>Number.parseFloat(css.getPropertyValue(key))||fallback;
     const receptionBounds=rect('reception');
-    const counterEl=get('reception')?.querySelector('.counter');let counter=this.rect(counterEl);
-    const counterClip=counterEl&&getComputedStyle(counterEl).clipPath.match(/^inset\(([\d.]+)%/);
-    if(counter&&counterClip){const cut=counter.height*Number(counterClip[1])/100;counter={...counter,y:counter.y+cut,height:counter.height-cut};}
-    if(state.story&&receptionBounds){
-      // All restoration images share the 1536x1024 camera and the back lip at
-      // source y635. A percentage of the viewport cuts through the floor when
-      // cover crops the image. Use the image's fitted coordinates instead.
-      const fit=Math.max(receptionBounds.width/1536,receptionBounds.height/1024);
-      const edge=receptionBounds.y+(receptionBounds.height-1024*fit)/2+635*fit;
-      const y=Math.min(receptionBounds.y+receptionBounds.height,Math.max(receptionBounds.y,edge));
-      counter={x:receptionBounds.x,y,width:receptionBounds.width,height:receptionBounds.y+receptionBounds.height-y};
-    }
+    const receptionPresentation={story:!!state.story,stage:Number(state.story?.shopRestorationStage||0),furnished:num('--repair-furnished'),clean:num('--repair-clean'),restoration:state.story?.restoration?{kind:state.story.restoration.kind,elapsed:state.story.restoration.elapsed}:null,night:num('--light-night'),evening:num('--light-evening')};
+    const receptionLayers=key==='Reception'&&receptionBounds?receptionLayout({...receptionPresentation,bounds:receptionBounds}):null;
+    const counter=receptionLayers?.counter||null;let visitorPose=null;
     if(key==='Reception'){
       const visitor=get('visitor');
       const serial=state.offers?.[0]?.arrivalSerial??state.orders?.find(o=>o.accepted===false)?.arrivalSerial??state.story?.contractOfferPending??'';
-      add(visitor,'visitor:'+serial+':'+visitor?.getAttribute('src'),15,'visitor');
+      add(visitor,'visitor:'+serial+':'+visitor?.getAttribute('src'),20,'visitor');
       const portrait=sprites.find(sprite=>sprite.id.startsWith('visitor:'));
-      if(portrait&&counter&&portrait.source){
-        const fit=Math.min(portrait.width/portrait.source.width,portrait.height/portrait.source.height);
-        const height=portrait.source.height*fit;
-        // Portraits end at the waist. Hide their lower forty percent behind
-        // the real wooden lip, instead of exposing the cut end above it.
-        portrait.y=counter.y-height*.1;
+      if(portrait&&receptionBounds){
+        portrait.source=this.textureSource?.(portrait.key)||portrait.source;
+        visitorPose=visitorLayout(receptionBounds,portrait.key,portrait.source);
+        if(visitorPose)Object.assign(portrait,{x:visitorPose.x,y:visitorPose.y,width:visitorPose.width,height:visitorPose.height,fit:'contain'});
       }
+      // Move the existing DOM controls before measuring their native images,
+      // so the click target and visible prop share the source table footpoint.
+      window.LootkeeperReceptionLayers?.update({...receptionPresentation,key,bounds:receptionBounds,receptionLayers,visitorPose});
       add(get('bag')?.querySelector('img'),'counter-bag:'+serial,35,'bag');
       add(get('parcel')?.querySelector('img'),'counter-parcel:'+serial,35,'bag');
       add(get('dwarfStation')?.querySelector('img'),'borin-station',95);
@@ -178,11 +171,15 @@ export class SceneBridge{
       bounds:key==='Menu'?{x:0,y:0,width:root.clientWidth,height:root.clientHeight}:key==='Tower'?rect('towerInterior'):key==='City'?rect('cityMap'):rect(key==='Workbench'?'work':'reception'),
       counter,
       cityLandscape:key==='City'?this.rect(city.querySelector('.city-landscape')):null,
-      surfaces,sprites,story:!!state.story,stage:Number(state.story?.shopRestorationStage||0),furnished:num('--repair-furnished'),clean:num('--repair-clean'),restoration:state.story?.restoration?{kind:state.story.restoration.kind,elapsed:state.story.restoration.elapsed}:null,night:num('--light-night'),evening:num('--light-evening'),
+      surfaces,sprites,...receptionPresentation,receptionLayers,visitorPose,
       towerOwned:!!state.city?.towerOwned};
     return Object.freeze(snapshot);
   }
-  enable(textures){this.textureReady=key=>textures.exists(key);this.ready=true;this.root.classList.add('phaser-ready');this.root.dataset.renderer='phaser';}
+  enable(textures){
+    this.textureReady=key=>textures.exists(key);
+    this.textureSource=key=>{if(!textures.exists(key))return null;const source=textures.get(key).getSourceImage();return {width:source.width,height:source.height};};
+    this.ready=true;this.root.classList.add('phaser-ready');this.root.dataset.renderer='phaser';
+  }
   dispose(){
     this.ready=false;this.root.classList.remove('phaser-ready');delete this.root.dataset.renderer;
     for(const node of this.nativeNodes)if(node.isConnected)delete node.dataset.phaserArt;

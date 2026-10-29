@@ -1,0 +1,79 @@
+{
+  "format": "lootkeeper-reception-layer-pack-v1",
+  "canvas": {
+    "width": 1536,
+    "height": 1024
+  },
+  "origin": "top-left",
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "layerOrder": [
+    {
+      "depth": 0,
+      "role": "background",
+      "instruction": "Day image under night image; blend night alpha from 0 to 1."
+    },
+    {
+      "depth": 10,
+      "role": "character",
+      "instruction": "Use the existing visitor/character sprite."
+    },
+    {
+      "depth": 20,
+      "role": "counter",
+      "instruction": "Independent full-canvas transparent foreground; translate Y to adjust counter height."
+    }
+  ],
+  "counterOffsetY": {
+    "default": 100,
+    "previewRange": [
+      -80,
+      280
+    ],
+    "testedLowering": 180
+  },
+  "approvedAdventurerPose": {"x":650,"y":950,"scale":140,"portraits":["s3_0","s3_1","s3_2","s3_3","s3_5"],"confirmed":"2026-10-29","anchor":"center-bottom","baseFit":{"width":337.92,"height":665.6}},
+  "runtimeLayout": "../../phaser/reception-layout.js",
+  "stages": [
+    {
+      "id": "derelict",
+      "label": "Разрушенная лавка",
+      "source": "../reception-derelict.png",
+      "day": "backgrounds/derelict-day.png",
+      "night": "backgrounds/derelict-night.png",
+      "counter": "counters/derelict-counter.png"
+    },
+    {
+      "id": "bare-walls",
+      "label": "После уборки",
+      "source": "../reception-bare-walls.png",
+      "day": "backgrounds/bare-walls-day.png",
+      "night": "backgrounds/bare-walls-night.png",
+      "counter": "counters/bare-walls-counter.png"
+    },
+    {
+      "id": "guild-furnished",
+      "label": "Обустроенная лавка",
+      "source": "../reception-guild-furnished.png",
+      "day": "backgrounds/guild-furnished-day.png",
+      "night": "backgrounds/guild-furnished-night.png",
+      "counter": "counters/guild-furnished-counter.png"
+    }
+  ],
+  "provenance": {
+    "counter": "Exact existing source RGB, only alpha changed along the traced back edge.",
+    "day": "Original source rows 0..599 unchanged. ImageGen reconstructs the hidden stone floor; smooth transition at y600..623.",
+    "night": "Built-in image_gen lighting edit of the finished counter-free day background.",
+    "prompts": "sources/prompts.json",
+    "floorPreparation": "sources/backgrounds-manifest.json",
+    "counterMasks": "counters/counter-masks.json"
+  },
+  "validation": {
+    "command": "node tests/reception-layer-assets.cjs",
+    "result": "PASS",
+    "date": "2026-10-28",
+    "scope": "Nine PNG dimensions, alpha and pixel fidelity; isolated headless Edge preview with day/night blend, counter movement and character layer. No game or live save loaded."
+  }
+}

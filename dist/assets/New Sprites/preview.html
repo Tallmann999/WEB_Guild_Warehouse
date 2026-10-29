@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Lootkeeper — слои приёмки</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#191b20;color:#e8e5dc;font:15px/1.45 system-ui,sans-serif}main{max-width:1320px;padding:28px;margin:auto}h1{font-size:27px;margin:0 0 7px}h2{font-size:20px;margin:28px 0 12px}p{color:#b6b5b2;margin:0 0 20px}.controls{display:flex;flex-wrap:wrap;align-items:end;gap:18px;padding:18px;background:#262931;border:1px solid #424651;border-radius:10px;margin-bottom:15px}label{display:grid;gap:7px;min-width:180px}label.range{flex:1;min-width:225px}label.check{display:flex;align-items:center;gap:8px;min-width:0}select,button{font:inherit;background:#333844;color:#f1e5cd;border:1px solid #636979;border-radius:5px;padding:9px 12px}button{cursor:pointer}button:hover,select:focus-visible{border-color:#d3b57b}input[type=range]{width:100%;accent-color:#ddbd7d}output{font-variant-numeric:tabular-nums;color:#f2cd89}a{color:#d5bd8d}a:hover{color:#ffe1a9}.actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px}.scene{position:relative;aspect-ratio:1536/1024;width:100%;overflow:hidden;background:#35343b;border-radius:6px;isolation:isolate}.scene img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;object-fit:contain}.scene .day{z-index:0}.scene .night{z-index:1}.scene .actor{z-index:2;left:39%;top:21%;width:22%;height:65%;object-fit:contain;object-position:center bottom}.scene .counter{z-index:3}.status{font-size:13px;color:#b9cba7;min-height:20px;margin:9px 0}.status.error{color:#efb2a4}.links{font-size:13px;display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 22px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{padding:12px;background:#262931;border:1px solid #424651;border-radius:8px}.card h3{font-size:15px;margin:0 0 10px}.card .links{margin:10px 0 0;font-size:12px}.sheet-label{font-size:13px;color:#b6b5b2;margin-bottom:10px}.hidden{display:none!important}@media(max-width:700px){main{padding:16px}.grid{grid-template-columns:1fr}h1{font-size:23px}}
+</style>
+<style>
+input[type=number]{font:inherit;background:#333844;color:#f1e5cd;border:1px solid #636979;border-radius:5px;padding:9px 12px;width:130px}
+.actor-controls label{min-width:130px}.actor-controls .actor-choice{min-width:240px}.actor-controls .range{min-width:210px}
+.scene .actor-handle{position:absolute;z-index:2;left:50%;top:86%;width:22%;height:65%;transform:translate(-50%,-100%);transform-origin:center bottom;cursor:grab;touch-action:none;user-select:none}
+.scene .actor-handle.is-dragging{cursor:grabbing}.scene .actor-handle:focus-visible{outline:2px dashed #efcf8c;outline-offset:4px}
+.scene .actor-handle .actor{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center bottom;pointer-events:none}
+.actor-help{font-size:13px;margin:0 0 14px}
+</style>
+<main>
+  <h1>Приёмка · отдельные слои</h1>
+  <p>Три состояния лавки, плавная смена дня и ночи, подвижный прилавок и настройка размера и положения авантюристов. Персонаж находится между фоном и прилавком.</p>
+  <div class="controls">
+    <label>Состояние лавки<select id="stage"><option value="derelict">Заброшенная</option><option value="bare-walls">После уборки</option><option value="guild-furnished">Обустроенная гильдия</option></select></label>
+    <label class="range">Освещение <output id="blendValue">День 100% · ночь 0%</output><input id="blend" type="range" min="0" max="100" value="0" aria-label="Доля ночного фона"></label>
+    <label class="range">Сдвиг прилавка <output id="counterValue">+100 px</output><input id="counterY" type="range" min="-80" max="280" value="100" aria-label="Вертикальный сдвиг прилавка в пикселях исходника"></label>
+  </div>
+  <div class="controls actor-controls" aria-label="Размер и положение авантюриста">
+    <label class="actor-choice">Авантюрист<select id="actorSelect"><option value="s3_0">Роуэн · лесной разведчик</option><option value="s3_1">Бран · страж перевала</option><option value="s3_2">Торн · охотник на чудовищ</option><option value="s3_3">Мирра · лесная собирательница</option><option value="s3_5">Финн · искатель сокровищ</option></select></label>
+    <label class="range">Размер <output id="actorScaleValue">140%</output><input id="actorScale" type="range" min="25" max="250" value="140" aria-label="Масштаб авантюриста в процентах"></label>
+    <label>Положение X<input id="actorX" type="number" min="-768" max="2304" step="1" value="650" aria-label="Координата X авантюриста"></label>
+    <label>Положение Y<input id="actorY" type="number" min="-512" max="2048" step="1" value="950" aria-label="Координата Y авантюриста"></label>
+    <button id="resetActor" type="button">Сбросить персонажа</button>
+  </div>
+  <p class="actor-help">Перетаскивайте авантюриста мышью или пальцем. Масштаб меняется относительно нижней опоры. X/Y — в пикселях кадра 1536 × 1024; стрелки на выделенном персонаже двигают его на 10 px, с Shift — на 1 px. Положение каждого авантюриста запоминается отдельно до перезагрузки страницы.</p>
+  <div id="mainScene" class="scene" aria-label="Послойное превью приёмки">
+    <img id="dayLayer" class="day" alt="Дневной интерьер без переднего прилавка">
+    <img id="nightLayer" class="night" alt="Ночной интерьер без переднего прилавка">
+    <div id="actorHandle" class="actor-handle" tabindex="0" role="group" aria-label="Роуэн — перетащите, чтобы изменить положение"><img id="actorLayer" class="actor" src="../s3_0.png" alt="Роуэн за прилавком" draggable="false"></div>
+    <img id="counterLayer" class="counter" alt="Отдельный передний прилавок">
+  </div>
+  <div class="actions">
+    <label class="check"><input id="showCounter" type="checkbox" checked>Показать прилавок</label>
+    <label class="check"><input id="showActor" type="checkbox" checked>Показать персонажа</label>
+    <button id="resetY" type="button">Утверждённое положение · +100 px</button><button id="lowerY" type="button">Опустить на 180 px</button>
+  </div>
+  <div id="status" class="status" role="status">Загрузка PNG…</div>
+  <div class="links"><a id="dayLink" download>Дневной фон PNG</a><a id="nightLink" download>Ночной фон PNG</a><a id="counterLink" download>Прозрачный прилавок PNG</a></div>
+  <p>Сдвиг задан в пикселях исходного кадра 1536 × 1024. Прилавок сохраняет исходные цвета; освещение смешивает только два фоновых слоя. Выключите прилавок, чтобы рассмотреть дорисованный пол.</p>
+  <h2>Три стадии × два освещения</h2>
+  <div id="contactSheet"><div class="sheet-label">Слева — день, справа — ночь. Утверждённый сдвиг прилавка: +100 px.</div><div id="contactGrid" class="grid"></div></div>
+</main>
+<script>
+'use strict';
+const STAGES=[['derelict','Заброшенная'],['bare-walls','После уборки'],['guild-furnished','Обустроенная гильдия']];
+const $=id=>document.getElementById(id),src=(stage,time)=>'backgrounds/'+stage+'-'+time+'.png',counter=stage=>'counters/'+stage+'-counter.png';
+let generation=0;window.previewReady=false;
+function updateBlend(){const blend=Number($('blend').value);$('nightLayer').style.opacity=blend/100;$('blendValue').textContent='День '+(100-blend)+'% · ночь '+blend+'%';}
+function updateCounter(){const y=Number($('counterY').value);$('counterLayer').style.transform='translateY('+(y/1024*100)+'%)';$('counterValue').textContent=(y>0?'+':'')+y+' px';$('counterLayer').classList.toggle('hidden',!$('showCounter').checked);$('actorHandle').classList.toggle('hidden',!$('showActor').checked);}
+const actorDefaults={x:650,y:950,scale:140},actorSettings=new Map();
+let actorDrag=null;
+const actorPose=()=>{const key=$('actorSelect').value;if(!actorSettings.has(key))actorSettings.set(key,{...actorDefaults});return actorSettings.get(key);};
+function updateActor(){
+  const pose=actorPose(),image=$('actorLayer'),handle=$('actorHandle');
+  const fit=Math.min(1536*.22/(image.naturalWidth||1),1024*.65/(image.naturalHeight||1));
+  handle.style.left=pose.x/1536*100+'%';handle.style.top=pose.y/1024*100+'%';
+  handle.style.width=(image.naturalWidth||1)*fit/1536*100+'%';handle.style.height=(image.naturalHeight||1)*fit/1024*100+'%';
+  handle.style.transform='translate(-50%,-100%) scale('+pose.scale/100+')';
+  $('actorX').value=pose.x;$('actorY').value=pose.y;$('actorScale').value=pose.scale;$('actorScaleValue').textContent=pose.scale+'%';
+}
+function moveActor(x,y){const pose=actorPose();pose.x=Math.round(Math.max(-768,Math.min(2304,x)));pose.y=Math.round(Math.max(-512,Math.min(2048,y)));updateActor();}
+function stopActorDrag(){
+  if(actorDrag&&$('actorHandle').hasPointerCapture(actorDrag.id))$('actorHandle').releasePointerCapture(actorDrag.id);
+  actorDrag=null;$('actorHandle').classList.remove('is-dragging');
+}
+function selectActor(){
+  stopActorDrag();const select=$('actorSelect'),name=select.selectedOptions[0].textContent.split(' · ')[0];
+  $('actorLayer').src='../'+select.value+'.png';$('actorLayer').alt=name+' за прилавком';
+  $('actorHandle').setAttribute('aria-label',name+' — перетащите, чтобы изменить положение');updateActor();
+}
+function loaded(image){return new Promise((resolve,reject)=>{if(image.complete&&image.naturalWidth){resolve();return;}image.addEventListener('load',resolve,{once:true});image.addEventListener('error',()=>reject(new Error(image.getAttribute('src'))),{once:true});});}
+async function updateStage(){
+  const current=++generation,stage=$('stage').value;window.previewReady=false;$('status').classList.remove('error');$('status').textContent='Загрузка PNG…';
+  $('dayLayer').src=src(stage,'day');$('nightLayer').src=src(stage,'night');$('counterLayer').src=counter(stage);
+  $('dayLink').href=src(stage,'day');$('nightLink').href=src(stage,'night');$('counterLink').href=counter(stage);
+  updateBlend();updateCounter();
+  try{await Promise.all(['dayLayer','nightLayer','counterLayer','actorLayer'].map(id=>loaded($(id))));if(current!==generation)return;updateActor();window.previewReady=true;$('status').textContent='Готово · фон и прилавок загружены отдельными PNG';}
+  catch(error){if(current!==generation)return;$('status').classList.add('error');$('status').textContent='Не найден PNG: '+error.message;}
+}
+for(const [stage,label]of STAGES)for(const time of ['day','night']){
+  const card=document.createElement('article');card.className='card';card.dataset.stage=stage;card.dataset.time=time;
+  const heading=document.createElement('h3');heading.textContent=label+' · '+(time==='day'?'день':'ночь');card.append(heading);
+  const frame=document.createElement('div');frame.className='scene';
+  const background=document.createElement('img');background.className='day';background.src=src(stage,time);background.alt=heading.textContent+' — фон';frame.append(background);
+  const foreground=document.createElement('img');foreground.className='counter';foreground.src=counter(stage);foreground.alt='Передний прилавок';foreground.style.transform='translateY('+(100/1024*100)+'%)';frame.append(foreground);card.append(frame);
+  const links=document.createElement('div');links.className='links';for(const [text,url]of [['Фон PNG',src(stage,time)],['Прилавок PNG',counter(stage)]]){const link=document.createElement('a');link.href=url;link.textContent=text;link.download='';links.append(link);}card.append(links);$('contactGrid').append(card);
+}
+$('stage').addEventListener('change',updateStage);$('blend').addEventListener('input',updateBlend);$('counterY').addEventListener('input',updateCounter);
+for(const id of ['showCounter','showActor'])$(id).addEventListener('change',updateCounter);
+$('resetY').onclick=()=>{$('counterY').value=100;updateCounter();};$('lowerY').onclick=()=>{$('counterY').value=180;updateCounter();};
+$('actorSelect').addEventListener('change',selectActor);$('actorLayer').addEventListener('load',updateActor);
+$('actorScale').addEventListener('input',()=>{actorPose().scale=Number($('actorScale').value);updateActor();});
+for(const id of ['actorX','actorY'])$(id).addEventListener('input',()=>{const input=$(id);if(!Number.isFinite(input.valueAsNumber))return;const pose=actorPose();moveActor(id==='actorX'?input.valueAsNumber:pose.x,id==='actorY'?input.valueAsNumber:pose.y);});
+$('resetActor').onclick=()=>{stopActorDrag();actorSettings.set($('actorSelect').value,{...actorDefaults});updateActor();};
+$('actorHandle').addEventListener('pointerdown',event=>{
+  if(event.button!==0||actorDrag)return;const pose=actorPose();event.preventDefault();
+  actorDrag={id:event.pointerId,clientX:event.clientX,clientY:event.clientY,x:pose.x,y:pose.y};
+  $('actorHandle').setPointerCapture(event.pointerId);$('actorHandle').classList.add('is-dragging');$('actorHandle').focus({preventScroll:true});
+});
+$('actorHandle').addEventListener('pointermove',event=>{
+  if(!actorDrag||event.pointerId!==actorDrag.id)return;const frame=$('mainScene').getBoundingClientRect();
+  moveActor(actorDrag.x+(event.clientX-actorDrag.clientX)*1536/frame.width,actorDrag.y+(event.clientY-actorDrag.clientY)*1024/frame.height);
+});
+for(const event of ['pointerup','pointercancel','lostpointercapture'])$('actorHandle').addEventListener(event,input=>{if(!actorDrag||input.pointerId===actorDrag.id)stopActorDrag();});
+$('actorHandle').addEventListener('keydown',event=>{
+  const direction={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[event.key];if(!direction)return;
+  event.preventDefault();const pose=actorPose(),step=event.shiftKey?1:10;moveActor(pose.x+direction[0]*step,pose.y+direction[1]*step);
+});
+window.addEventListener('blur',stopActorDrag);updateActor();
+updateStage();
+</script>
+</html>
