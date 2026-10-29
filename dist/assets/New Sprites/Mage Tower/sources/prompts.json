@@ -1,0 +1,34 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-29",
+  "prompts": [
+    {
+      "id": "room-1",
+      "prompt": "Game environment edit, opaque1536x1024. The input shop is an EXACT ROOM GEOMETRY AND ART STYLE TEMPLATE. Retain identical camera, sidewall widths and angles, central back wall plane, floor vanishing point and floor-wall boundary at y595. Preserve painterly fantasy brushwork. Transform ALL wooden/tan architecture to old grey stone brick masonry: same left/right wall footprint and pillars but masonry, no timber shop panels. Replace the single large shop window with TWO evenly aligned medium arched stone windows within the SAME central back wall, a stone pillar between them. Both windows boarded with rough old wooden planks, small gaps hint at a DIFFERENT viewpoint of the same medieval city from high in a tower, toward a side street and rooftops, not the original castle/bridge panorama. Stage1 abandoned: bare empty stone walls, heavy fine cobwebs in upper corners/window frames, cracked mortar, dust and dirt, rubble near walls, dim diffuse light. Retain continuous stone tile FLOOR to the full lower edge y1024, with perspective unchanged. No counter, table, shelves, jars, orb, mechanism, people or UI in this BACKGROUND layer. Do not introduce a new room shape or wide camera. No text/watermark."
+    },
+    {
+      "id": "room-2",
+      "prompt": "Lighting/object upgrade edit. Keep this exact stone tower room: identical camera1536x1024, side wall widths, wall angles, pillars, two arches and window sill coordinates, floor tile boundaries and perspective. Same painterly fantasy style. Stage2 partly restored: remove wooden boarding from BOTH windows, show the SAME city rooftop view hinted behind boards but now clear, alternate high-tower view down medieval rooftops and side-streets, no shop's old bridge/castle panorama. Sweep away rubble and most cobwebs, moderately clean stone with some age. Add TWO SIMPLE wooden wall shelf tiers only on the LEFT SIDE WALL footprint and corresponding RIGHT SIDE WALL, like the shop's side shelves, do not protrude across windows or change wall layout. On EACH side sparsely place only3to5 glass jars/bottles with colored liquids(total per side,not per tier), with two small closed wooden crates beneath. Plenty of empty shelf space. No organs yet, no crowded equipment. No counter/table, orb, mechanism, characters or UI. Keep full floor to bottom. Output opaque1536x1024."
+    },
+    {
+      "id": "room-3",
+      "prompt": "Stage3 fully equipped wizard laboratory edit of this EXACT stone room. Preserve identical1536x1024 camera, sidewall footprints, all pillars, masonry courses, two arched windows, floor tile edges and SAME city view and lighting. Same painterly fantasy game art. Replace sparse side-wall shelves with tall fitted WOODEN SHELVING on both side walls within their existing narrow footprints, like the fully furnished shop reference layout but for an alchemical wizard. Shelves densely stocked with varied jars containing stylized preserved organs/specimens in liquid (non-graphic, no blood), dark specimen bottles, mutagen vials in stands, potion bottles, conical flasks and retorts with varied colored preparations. Strong readable variety of silhouettes and sizes, restrained violet/teal/amber liquids. Crates tucked beneath shelving. Room thoroughly swept and cared for; retain aged grey stone. Windows fully open, exact same view and frame coordinates. NO counter/table, orb, machine, characters, labels or UI in this background layer. Full stone floor to bottom. Do not expand shelves across windows, add a central desk or change camera."
+    },
+    {
+      "id": "counter-1",
+      "prompt": "Material-condition edit of this transparent counter sprite. Preserve EXACT full silhouette, perspective, straight back edge, dimensions, panel/support shape and object placement on transparent canvas. Same painterly game style. STAGE1: ancient dark marble counter, very dusty, dirty, dull, chipped and partly broken at a few edges/corners, fine fractures, mortar dust and a few cobwebs under the front lip. The slab remains continuous enough to use; no giant hole through it. Marble dark charcoal nearly black with sparse muted white mineral veins, barely visible beneath dirt. Do not add objects on top. No background, room, floor, text or labels. Genuine transparent alpha, keep whole counter."
+    },
+    {
+      "id": "counter-2",
+      "prompt": "Material-condition edit of this transparent counter sprite. Preserve EXACT full silhouette, perspective, straight back edge, dimensions, panel/support shape and placement. Same painterly game style. STAGE2 partly cleaned dark charcoal marble: much less dust, no cobwebs, minor remaining chips and scratches, matte/satin finish, visible but restrained natural white veins. Clearly cleaner than a ruined counter but not pristine/highly polished. Keep entire top empty. No objects, background, room, floor, text or labels. Genuine transparent alpha."
+    },
+    {
+      "id": "counter-3",
+      "prompt": "Generate only an ISOLATED GAME FOREGROUND COUNTER on true transparent alpha. First image defines EXACT silhouette, perspective, full width and proportions of the nearest wooden shop counter (y632..1024), second is the authoritative black marble material reference. Replace this counter with dark black marble, polished at stage3, irregular fine WHITE mineral veins like second image, NOT purple or green. Broad flat continuous tabletop, thick horizontal bevel at front, simple substantial dark stone panels/support below. Front-facing, tabletop seen slightly from above, identical camera and straight horizontal back edge. Complete object width to height about4:1, tabletop occupies upper28% and front/base lower72%. Entire full-width object visible, no feet protruding, no fancy temple altar, no gold trim, no ornaments. Match painterly fantasy shop art, not a photo. Empty top surface. No room, floor plane, jars, orb, machine, other objects, text, watermark. Real transparent background."
+    },
+    {
+      "id": "orb-dusty",
+      "prompt": "Precise object edit of this existing transparent game sprite. Preserve exact round purple crystal orb, aged bronze tripod, silhouette, size, shape and painterly fantasy render style. Make it dormant and long abandoned: veil of grey dust over upper hemisphere and rim, light delicate cobweb strands between claw tips, tarnished stand. Violet glass still visibly purple but muted, NO bright inner glow or sparks. Keep details readable. No surface, room, cast-shadow plane, text or UI. Output only this isolated dormant dusty orb and stand with real transparent alpha."
+    }
+  ]
+}

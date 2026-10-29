@@ -2,7 +2,7 @@
 // here: both renderers adapt the existing simulation into this one camera.
 export const RECEPTION_SOURCE=Object.freeze({width:1536,height:1024,counterOffsetY:100,counterBackEdgeY:635,counterPropFootY:810});
 export const RECEPTION_STAGES=Object.freeze(['derelict','bare-walls','guild-furnished']);
-export const DEFAULT_VISITOR_POSE=Object.freeze({x:768,y:950,scale:100});
+export const DEFAULT_VISITOR_POSE=Object.freeze({x:650,y:950,scale:140});
 const adventurerPose=Object.freeze({x:650,y:950,scale:140});
 export const VISITOR_POSES=Object.freeze(Object.fromEntries(['s3_0','s3_1','s3_2','s3_3','s3_5'].map(id=>[id,adventurerPose])));
 // Alpha-bounds foot points of the existing PNGs, measured at alpha >= 16.

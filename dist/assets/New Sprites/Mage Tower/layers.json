@@ -1,0 +1,47 @@
+{
+  "canvas": {
+    "width": 1536,
+    "height": 1024
+  },
+  "installed": false,
+  "counter": {
+    "x": -192,
+    "y": 735,
+    "width": 1920,
+    "height": 389,
+    "overscanEachSide": 192
+  },
+  "orb": {
+    "x": 720,
+    "y": 810,
+    "width": 120
+  },
+  "machine": {
+    "x": 190,
+    "y": 810,
+    "width": 410
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "background": "backgrounds/stage-1.png",
+      "counter": "counters/stage-1.png",
+      "orb": "props/orb-dusty.png",
+      "machine": null
+    },
+    {
+      "stage": 2,
+      "background": "backgrounds/stage-2.png",
+      "counter": "counters/stage-2.png",
+      "orb": "props/orb-dusty.png",
+      "machine": "props/machine.png"
+    },
+    {
+      "stage": 3,
+      "background": "backgrounds/stage-3.png",
+      "counter": "counters/stage-3.png",
+      "orb": "props/orb-clean.png",
+      "machine": "props/machine.png"
+    }
+  ]
+}
