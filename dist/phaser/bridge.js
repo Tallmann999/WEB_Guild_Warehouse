@@ -58,6 +58,9 @@ export class SceneBridge{
     this.inputTargets.set(id,binding);
   }
   foregroundActors(){
+    // Native takeover must not keep detached workbench DOM alive after every
+    // item move, worker refresh or scene change.
+    for(const img of this.nativeNodes)if(!img.isConnected)this.nativeNodes.delete(img);
     // These transient actors must cross DOM table/shelf/window borders. The
     // world canvas is intentionally below accessible DOM controls, so retain
     // this small foreground in DOM rather than hiding it under that canvas.
@@ -66,26 +69,33 @@ export class SceneBridge{
     });
   }
   visible(el){
+    if(this.visibilityCache?.has(el))return this.visibilityCache.get(el);
     if(!el||!el.isConnected||!el.getClientRects().length)return false;
     for(let node=el;node&&node!==this.root;node=node.parentElement){
       if(node.hidden||node.classList.contains('hidden'))return false;
-      const css=getComputedStyle(node);
+      const css=this.style(node);
       if(css.display==='none'||css.visibility==='hidden')return false;
     }
+    this.visibilityCache?.set(el,true);
     return true;
+  }
+  style(el){
+    let css=this.styleCache?.get(el);
+    if(!css){css=getComputedStyle(el);this.styleCache?.set(el,css);}
+    return css;
   }
   rect(el){
     if(!el)return null;
-    const r=el.getBoundingClientRect(),root=this.root.getBoundingClientRect(),unit=root.width/this.root.offsetWidth||1;
+    const r=el.getBoundingClientRect(),root=this.rootRect||this.root.getBoundingClientRect(),unit=this.unit||root.width/this.root.offsetWidth||1;
     return {x:(r.left-root.left)/unit,y:(r.top-root.top)/unit,width:r.width/unit,height:r.height/unit};
   }
   sprite(el,id,layer=20,motion=null){
     if(!this.visible(el))return null;
     const key=textureKey(el.currentSrc||el.getAttribute('src'));if(!key)return null;
-    const rect=this.rect(el),style=getComputedStyle(el),r={...rect};
+    const rect=this.rect(el),style=this.style(el),r={...rect};
     let angle=0,alpha=1,flipX=false,scaleX=1,scaleY=1;
     for(let node=el;node&&node!==this.root;node=node.parentElement){
-      const css=getComputedStyle(node);
+      const css=this.style(node);
       // Native takeover hides the source image with CSS opacity. Its previous
       // inline alpha still controls bag reveals, carry/drop and dragged items.
       alpha*=node===el&&node.dataset.phaserArt?(Number(node.style.opacity||1)):Number(css.opacity||1);
@@ -115,18 +125,20 @@ export class SceneBridge{
     const scroll=el.closest('#inspectScroll,#sourceScroll,#packedScroll,#targetScroll,.target-items');
     if(scroll)mask=this.rect(scroll);
     const img=el,source=img.naturalWidth&&img.naturalHeight?{width:img.naturalWidth,height:img.naturalHeight}:null;
-    if(this.ready&&this.textureReady?.(key)){img.dataset.phaserArt=key;this.nativeNodes.add(img);}
+    if(this.ready&&this.textureReady?.(key)){if(img.dataset.phaserArt!==key)img.dataset.phaserArt=key;this.nativeNodes.add(img);}
     return {id,key,x:r.x,y:r.y,width:r.width,height:r.height,angle,alpha:Math.min(1,Math.max(0,alpha)),flipX,unknown,layer,motion,mask,fit:style.objectFit||'contain',source,selected:!!emphasis?.classList.contains('chosen'),hovered:!!emphasis&&!emphasis.disabled&&emphasis.matches(':hover,:focus-visible,.tutorial-focus,.drop-ready')};
   }
   capture(){
     const state=this.read?.()||{},root=this.root;
+    this.styleCache=new WeakMap();this.visibilityCache=new WeakMap();
+    this.rootRect=root.getBoundingClientRect();this.unit=this.rootRect.width/root.offsetWidth||1;
     this.foregroundActors();
     this.inputTargets.clear();
     const city=document.getElementById('cityMap'),cityOpen=this.visible(city);
     const key=!state.started?'Menu':state.screen==='tower'?'Tower':cityOpen?'City':state.screen==='work'?'Workbench':'Reception';
     const get=id=>document.getElementById(id),rect=id=>this.rect(get(id));
     const sprites=[];const add=(el,id,depth,motion)=>{const sprite=this.sprite(el,id,depth,motion);if(sprite)sprites.push(sprite);};
-    const css=getComputedStyle(root),num=(key,fallback=0)=>Number.parseFloat(css.getPropertyValue(key))||fallback;
+    const css=this.style(root),num=(key,fallback=0)=>Number.parseFloat(css.getPropertyValue(key))||fallback;
     const receptionBounds=rect('reception');
     const receptionPresentation={story:!!state.story,stage:Number(state.story?.shopRestorationStage||0),furnished:num('--repair-furnished'),clean:num('--repair-clean'),restoration:state.story?.restoration?{kind:state.story.restoration.kind,elapsed:state.story.restoration.elapsed}:null,night:num('--light-night'),evening:num('--light-evening')};
     const receptionLayers=key==='Reception'&&receptionBounds?receptionLayout({...receptionPresentation,bounds:receptionBounds}):null;
@@ -172,7 +184,7 @@ export class SceneBridge{
       counter,
       cityLandscape:key==='City'?this.rect(city.querySelector('.city-landscape')):null,
       surfaces,sprites,...receptionPresentation,receptionLayers,visitorPose,
-      towerOwned:!!state.city?.towerOwned};
+      towerOwned:!!state.city?.towerOwned,towerStage:Math.max(1,Math.min(3,Number(state.story?.shopRestorationStage||0)+1))};
     return Object.freeze(snapshot);
   }
   enable(textures){

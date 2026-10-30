@@ -10,7 +10,7 @@ async function trim(input){
   return sharp(input).extract({left:x0,top:y0,width:x1-x0+1,height:y1-y0+1}).png().toBuffer();
 }
 (async()=>{
-  const manifest={canvas:{width:1536,height:1024},installed:false,counter:{x:-192,y:735,width:1920,height:389,overscanEachSide:192},orb:{x:720,y:810,width:120},machine:{x:190,y:810,width:410},stages:[]};
+  const manifest={canvas:{width:1536,height:1024},installed:true,stageSource:'story.shopRestorationStage + 1',counter:{x:-192,y:735,width:1920,height:389,overscanEachSide:192},orb:{x:720,y:810,width:120},machine:{x:190,y:810,width:410},stages:[]};
   for(let stage=1;stage<=3;stage++){
     await sharp(path.join(base,'sources/room-'+stage+'.png')).resize(1536,1024).removeAlpha().png().toFile(path.join(base,'backgrounds/stage-'+stage+'.png'));
     const counter=await trim(path.join(base,'sources/counter-'+stage+'.png'));
@@ -34,5 +34,5 @@ async function trim(input){
   }
   await sharp({create:{width:2304,height:512,channels:3,background:'#191b20'}}).composite(sheets).png().toFile(path.join(base,'previews/three-stages.png'));
   fs.writeFileSync(path.join(base,'layers.json'),JSON.stringify(manifest,null,2)+'\n');
-  console.log('PASS: 3 backgrounds + 3 alpha counters + dusty/clean orb + machine; 3 assembled previews, not installed.');
+  console.log('PASS: 3 backgrounds + 3 alpha counters + dusty/clean orb + machine; 3 assembled previews; runtime follows shop restoration stage.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

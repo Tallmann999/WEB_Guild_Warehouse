@@ -1,0 +1,9 @@
+PASS Borin -> original paid bag + automatic sorting -> two real kitchen deliveries -> armoury before day5.
+PASS legacy third kitchen partial and reserves survive migration/reload; no new repeats.
+PASS alchemist110 migration preserves UID/partial/gold; pending hire no longer blocks suppliers.
+PASS 15 real visits after day4 with owned tower: 9 adventurers / 6 parcels, phase survives loading.
+PASS both upgrade notices, wide yellow rating, acknowledgment/reload, original brass waveform and mute. {"played":true,"peak":0.05587473884224892,"energy":6.3170688015856395,"mutedPlayed":false}
+PASS mystery hand and first two actionable Grik prompts; no third prompt or repeat on reload.
+PASS four viewports: left shelves/table, tall clickable letters, assembly stacking; all tower states, native+fallback, reload and both returns preserve ledger.
+PASS bounded DOM retention after35 refreshes and live frame/worker clock, pause/resume. {"retained":{"native":38,"detached":0},"live":{"frames":84,"seconds":1.4930000000000518,"job":1.493}}
+PASS no page/HTTP errors.

@@ -17,10 +17,11 @@ function finishTutorial(skipped=false){
   clearTutorialHighlight();$('tutorialGuide')?.remove();render();save();
   if(!skipped)toast('Обучение завершено! Продолжайте собирать поручение.');
 }
-function tutorialGuide(target,message,cleaning=false){
+function tutorialGuide(target,message,cleaning=false,options={}){
   let guide=$('tutorialGuide');
   if(!guide){guide=document.createElement('div');guide.id='tutorialGuide';guide.innerHTML='<div class="tutorial-hand" aria-hidden="true">👇</div><div class="tutorial-note"><span role="status" aria-live="polite"></span><button>Пропустить обучение</button></div>';$('effects').append(guide);guide.querySelector('button').onclick=()=>finishTutorial(true);}
   const text=guide.querySelector('.tutorial-note span');if(text.textContent!==message)text.textContent=message;
+  const skip=guide.querySelector('button');skip.textContent=options.label||'Пропустить обучение';skip.onclick=options.skip||(()=>finishTutorial(true));
   guide.classList.toggle('cleaning',cleaning);
   const hand=guide.querySelector('.tutorial-hand'),highlight=target?.tagName==='CANVAS'?target.parentElement:target;
   if(tutorialTarget!==highlight){clearTutorialHighlight();tutorialTarget=highlight;tutorialTarget?.classList.add('tutorial-focus');}

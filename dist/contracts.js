@@ -1,16 +1,18 @@
 'use strict';
 
-// A signed agreement creates three real shipments, never stock or money.
+// Agreements create real shipments; their per-client limits never grant stock.
 const Contracts=(()=>{
   const SERIES_DELIVERIES=3;
   const royalCustomer=customers.findIndex(c=>c[0]==='Интендант короля');
   const royalCustomerIndex=royalCustomer>=0?royalCustomer:customers.push(['Интендант короля','королевская оружейная','s4_1'])-1;
   const DEFINITIONS={
-    chef:{name:'Повар',title:'Снабжение городской кухни',customer:4,reward:200,recipe:[{type:38,count:2},{type:31,count:2},{type:32,count:2}],description:'Кухне нужны три поставки. Каждый раз — шесть продуктов по этому списку, за готовую посылку заплачу 200 монет. Можно заняться ими в любое время, параллельно с обычной торговлей. Договоримся?'},
+    chef:{name:'Повар',title:'Снабжение городской кухни',customer:4,reward:200,deliveries:2,recipe:[{type:38,count:2},{type:31,count:2},{type:32,count:2}],description:'Кухне нужны две поставки. Каждый раз — шесть продуктов по этому списку, за готовую посылку заплачу 200 монет. Можно заняться ими в любое время, параллельно с обычной торговлей. После двух поставок вас порекомендуют королевской оружейной. Договоримся?'},
     alchemy:{name:'Алхимик',title:'Компоненты для мастерской',customer:0,reward:200,recipe:[{type:0,count:2},{type:1,count:2},{type:6,count:2}],description:'Я готовлю зелья и ищу поставщика на три посылки. Шесть компонентов по одному списку, 200 монет за каждую посылку. Возьмётесь?'},
     royal:{name:'Оружейная короля',title:'Поставки королевской оружейной',customer:royalCustomerIndex,reward:360,recipe:[{type:18,count:5},{type:19,count:5},{type:24,count:5}],description:'Королевской оружейной нужны три поставки снаряжения. В каждой — пять железных мечей, пять кинжалов и пять шлемов. За посылку из 15 вещей заплачу 360 монет.'}
   };
   const total=def=>def.recipe.reduce((n,line)=>n+line.count,0);
+  const limit=(key,c)=>c?.seriesLimit||DEFINITIONS[key]?.deliveries||SERIES_DELIVERIES;
+  const seriesLabel=(key,c)=>limit(key,c)+' ПОСЫЛКИ';
   const signId=key=>'signRegular'+({chef:'Chef',alchemy:'Alchemy',royal:'Royal'}[key]||key);
   let boardSignature='',bookSignature='';
   function ensure(){
@@ -20,7 +22,13 @@ const Contracts=(()=>{
     for(const key of Object.keys(DEFINITIONS)){
       const c=s.regularContracts[key]??={signed:false,delegated:false,deliveries:0,nextAt:0};
       c.signed=!!c.signed;c.delegated=!!c.delegated;c.deliveries=Math.max(0,Math.floor(Number(c.deliveries)||0));c.nextAt??=0;
-      c.seriesLimit=SERIES_DELIVERIES;c.completed=c.deliveries>=SERIES_DELIVERIES;
+      if(c.seriesVersion!==2){
+        // Honour an already-created legacy third kitchen parcel, including its
+        // partial packing/reserves. New kitchen agreements always stop at two.
+        const promised=key==='chef'&&c.deliveries>=2&&current(key);
+        c.seriesLimit=promised?c.deliveries+1:DEFINITIONS[key].deliveries||SERIES_DELIVERIES;c.seriesVersion=2;
+      }
+      c.completed=c.deliveries>=limit(key,c);
       if(!Array.isArray(c.deliveryOrderIds))c.deliveryOrderIds=[];
       if(c.signed||c.completed){c.offerState=c.completed?'completed':'signed';c.offerSeen=true;c.offeredAt??=s.elapsed||0;}
       else if(!['visiting','later'].includes(c.offerState))c.offerState='unseen';
@@ -40,7 +48,9 @@ const Contracts=(()=>{
   // valid independently of these rules for newly offered agreements.
   function ready(key){
     if(!state.story)return false;
-    const tower=!!state.city?.towerOwned,kitchen=tower||state.day>=2&&!!state.dwarf?.hired,royal=state.day>=5;
+    const c=state.story.regularContracts,lesson=state.story.borinIntroduction;
+    const tower=!!state.city?.towerOwned,kitchen=(tower||state.day>=2&&!!state.dwarf?.hired)&&(!lesson||lesson.phase==='complete');
+    const royal=!!c?.chef?.completed||!!c?.royal?.signed||!!c?.royal?.offerSeen;
     return key===undefined?kitchen||tower||royal:key==='chef'?kitchen:key==='alchemy'?tower:key==='royal'?royal:false;
   }
   function current(key){return (state.orders||[]).find(o=>o.regularKey===key);}
@@ -73,7 +83,7 @@ const Contracts=(()=>{
     for(const [key,def] of Object.entries(DEFINITIONS)){
       const c=contracts[key];
       if(!c.signed||c.completed||current(key)||state.story.elapsed<c.nextAt||(state.orders||[]).length>=4)continue;
-      const o={id:state.orderUid=(state.orderUid||0)+1,recipe:def.recipe.map(r=>({...r})),packed:[],reservedUids:[],accepted:true,customer:def.customer,reward:def.reward,originalReward:def.reward,contractRewardVersion:2,createdDay:state.day,title:def.title,description:'Поставка '+(c.deliveries+1)+' из '+SERIES_DELIVERIES+': '+total(def)+' вещей по списку.',storyOrder:true,regularKey:key,assignedTo:c.delegated&&state.goblin?.hired?'goblin':'manual'};
+      const o={id:state.orderUid=(state.orderUid||0)+1,recipe:def.recipe.map(r=>({...r})),packed:[],reservedUids:[],accepted:true,customer:def.customer,reward:def.reward,originalReward:def.reward,contractRewardVersion:2,createdDay:state.day,title:def.title,description:'Поставка '+(c.deliveries+1)+' из '+limit(key,c)+': '+total(def)+' вещей по списку.',storyOrder:true,regularKey:key,assignedTo:c.delegated&&state.goblin?.hired?'goblin':'manual'};
       state.orders.push(o);if(!state.order)state.order=o;changed=true;
     }
     if(changed){Goblin.reconcile();save();}
@@ -90,7 +100,7 @@ const Contracts=(()=>{
     if(c.deliveryOrderIds.includes(order.id))return;
     c.deliveryOrderIds.push(order.id);
     c.deliveries++;c.nextAt=state.story.elapsed+12;
-    if(c.deliveries>=SERIES_DELIVERIES){c.completed=true;c.offerState='completed';c.completedAt??=state.story.elapsed;}
+    if(c.deliveries>=limit(order.regularKey,c)){c.completed=true;c.offerState='completed';c.completedAt??=state.story.elapsed;}
   }
   function setDelegated(key,value){
     const c=ensure()?.[key],o=current(key);if(!c?.signed||!state.goblin?.hired)return false;
@@ -112,8 +122,8 @@ const Contracts=(()=>{
     return '<div class="'+(compact?'counter-contract-recipe':'contract-recipe')+'">'+def.recipe.map(r=>'<span data-count="'+r.count+'" title="'+items[r.type].name+'"><img src="'+asset(items[r.type].sprite)+'" alt="'+items[r.type].name+'"><b>'+r.count+(compact?'':' × '+items[r.type].name)+'</b></span>').join('')+'</div>';
   }
   function progressHtml(c){
-    const count=Math.min(SERIES_DELIVERIES,c.deliveries);
-    return '<span class="agreement-deliveries" role="img" aria-label="Выдано '+count+' из '+SERIES_DELIVERIES+' посылок">'+Array.from({length:SERIES_DELIVERIES},(_,i)=>'<span class="agreement-delivery'+(i<count?' checked':'')+'" aria-hidden="true">'+(i<count?'✓':'')+'</span>').join('')+'</span>';
+    const max=c.seriesLimit||SERIES_DELIVERIES,count=Math.min(max,c.deliveries);
+    return '<span class="agreement-deliveries" role="img" aria-label="Выдано '+count+' из '+max+' посылок">'+Array.from({length:max},(_,i)=>'<span class="agreement-delivery'+(i<count?' checked':'')+'" aria-hidden="true">'+(i<count?'✓':'')+'</span>').join('')+'</span>';
   }
   function visibleEntries(contracts,offersOnly=false){
     return Object.entries(DEFINITIONS).filter(([key])=>{
@@ -132,7 +142,7 @@ const Contracts=(()=>{
   function openOffer(key){
     const def=DEFINITIONS[key],c=ensure()?.[key];if(!def||!c||!state.started||state.paused||state.autoSorting||!c.signed&&!ready(key))return;
     if(c.signed){openBook();return;}
-    modal('<div id="contractOfferSheet"><span class="brief-eyebrow">ДОГОВОРЁННОСТЬ · 3 ПОСЫЛКИ</span><h2>'+def.title+'</h2><p>'+def.description+'</p>'+recipeHtml(def)+progressHtml(c)+'<p>'+total(def)+' настоящих вещей · '+def.reward+' монет за посылку · без срока и штрафа</p><button id="signOfferSheet" class="primary" '+(!ready(key)?'disabled':'')+'>Договориться и собрать самому</button><button id="laterOfferSheet">Решить позже</button></div>');
+    modal('<div id="contractOfferSheet"><span class="brief-eyebrow">ДОГОВОРЁННОСТЬ · '+seriesLabel(key,c)+'</span><h2>'+def.title+'</h2><p>'+def.description+'</p>'+recipeHtml(def)+progressHtml(c)+'<p>'+total(def)+' настоящих вещей · '+def.reward+' монет за посылку · без срока и штрафа</p><button id="signOfferSheet" class="primary" '+(!ready(key)?'disabled':'')+'>Договориться и собрать самому</button><button id="laterOfferSheet">Решить позже</button></div>');
     $('contractOfferSheet').dataset.questRarity='unique';
     $('signOfferSheet').onclick=()=>{closeModal();signAndAssemble(key);};
     $('laterOfferSheet').onclick=()=>{closeModal();postpone(key);render();};
@@ -142,20 +152,20 @@ const Contracts=(()=>{
     $('reception').classList.toggle('contract-guest',show);
     if(!show){$('receptionAction').classList.remove('contract-counter-actions');delete $('receptionAction').dataset.contractOffer;return false;}
     Story.render();
-    const guest=customers[offer.customer];$('visitor').src=asset(guest[2]);$('visitor').alt=guest[0]+', предложение трёх поставок';
+    const guest=customers[offer.customer],c=ensure()[offer.key];$('visitor').src=asset(guest[2]);$('visitor').alt=guest[0]+', предложение '+limit(offer.key,c)+' поставок';
     hidden('visitor',false);hidden('speech',false);hidden('bag',true);hidden('parcel',true);
-    $('speech').innerHTML='<span class="eyebrow">ДОГОВОРЁННОСТЬ · 3 ПОСЫЛКИ</span><h2>'+guest[0]+'</h2><p>'+offer.description+'</p>';
+    $('speech').innerHTML='<span class="eyebrow">ДОГОВОРЁННОСТЬ · '+seriesLabel(offer.key,c)+'</span><h2>'+guest[0]+'</h2><p>'+offer.description+'</p>';
     const action=$('receptionAction');action.innerHTML='';action.classList.add('contract-counter-actions');action.dataset.contractOffer=offer.key;
     button(action,'Договориться · собрать самому',()=>signAndAssemble(offer.key),'signContractOffer').className='primary';
     button(action,'Решить позже',()=>{postpone(offer.key);render();},'laterContractOffer');
     button(action,'К столу и коробкам',()=>setScreen('work','sort'),'goWork');
-    $('notice').innerHTML='<b>'+offer.title+'</b>'+recipeHtml(offer,true)+progressHtml(ensure()[offer.key])+'<span class="counter-contract-payment">3 посылки · по '+total(offer)+' вещей · по '+offer.reward+' монет</span>';
+    $('notice').innerHTML='<b>'+offer.title+'</b>'+recipeHtml(offer,true)+progressHtml(c)+'<span class="counter-contract-payment">'+limit(offer.key,c)+' посылки · по '+total(offer)+' вещей · по '+offer.reward+' монет</span>';
     $('stepHint').textContent='';return true;
   }
   function bookEntries(contracts){
     return visibleEntries(contracts).map(([key,def])=>{
       const c=contracts[key],o=current(key);
-      return '<article class="quest-sheet" data-book-contract-key="'+key+'"><span class="brief-eyebrow">'+def.name+'</span><h3>'+def.title+'</h3>'+progressHtml(c)+recipeHtml(def)+'<p>'+(o?(Goblin.readyToClaim?.(o)?'Выполнено':Goblin.isAssigned(o)?'Посылку собирает Грик':'Посылку можно собрать самому')+' · '+o.packed.length+'/'+total(o)+' в посылке':c.signed?'Следующая посылка через '+Math.max(0,Math.ceil(c.nextAt-state.story.elapsed))+' сек.':'Три посылки, без срока и штрафа')+'</p>'+(!c.signed?'<button class="primary" id="'+signId(key)+'" '+(!ready(key)?'disabled':'')+'>Договориться · собрать самому</button>':!o?'<div class="agreement-wait-actions"><button disabled>Собрать самому</button><button disabled>Доверить помощнику</button></div>':'')+'<small>Выдано: '+Math.min(c.deliveries,SERIES_DELIVERIES)+'/'+SERIES_DELIVERIES+' · по '+def.reward+' монет · '+total(def)+' вещей</small></article>';
+      return '<article class="quest-sheet" data-book-contract-key="'+key+'"><span class="brief-eyebrow">'+def.name+'</span><h3>'+def.title+'</h3>'+progressHtml(c)+recipeHtml(def)+'<p>'+(o?(Goblin.readyToClaim?.(o)?'Выполнено':Goblin.isAssigned(o)?'Посылку собирает Грик':'Посылку можно собрать самому')+' · '+o.packed.length+'/'+total(o)+' в посылке':c.signed?'Следующая посылка через '+Math.max(0,Math.ceil(c.nextAt-state.story.elapsed))+' сек.':limit(key,c)+' посылки, без срока и штрафа')+'</p>'+(!c.signed?'<button class="primary" id="'+signId(key)+'" '+(!ready(key)?'disabled':'')+'>Договориться · собрать самому</button>':!o?'<div class="agreement-wait-actions"><button disabled>Собрать самому</button><button disabled>Доверить помощнику</button></div>':'')+'<small>Выдано: '+Math.min(c.deliveries,limit(key,c))+'/'+limit(key,c)+' · по '+def.reward+' монет · '+total(def)+' вещей</small></article>';
     }).join('');
   }
   function bindBookActions(){
@@ -178,7 +188,7 @@ const Contracts=(()=>{
   function openBook(){
     if(!state.started||state.paused||state.autoSorting||!state.story)return;
     ensure();Goblin.ensure();bookSignature='';
-    modal('<span class="brief-eyebrow">ДОГОВОРЁННОСТИ</span><h2>Договорённости с клиентами</h2><p>Каждый договор — три посылки по своему списку, без срока. Кухня и другие договорённости идут параллельно с обычной торговлей и не задерживают следующий день. Галочка появляется после фактической выдачи.</p>'+(!ready('alchemy')?'<p class="contract-lock">Кухня предлагает снабжение после найма Борина. Алхимик — после покупки старой башни, королевская оружейная — с пятого дня. Принятые посылки остаются в силе.</p>':'')+'<div id="regularContractsBook" class="regular-contracts"></div>',{wide:true,activity:'background',kind:'book'});
+    modal('<span class="brief-eyebrow">ДОГОВОРЁННОСТИ</span><h2>Договорённости с клиентами</h2><p>Кухня — две посылки; алхимик и оружейная — по три. Все идут по своему списку, без срока. Кухня и другие договорённости идут параллельно с обычной торговлей и не задерживают следующий день. Галочка появляется после фактической выдачи.</p>'+(!ready('alchemy')?'<p class="contract-lock">Кухня предлагает снабжение после первой работы Борина. Алхимик — после покупки старой башни, королевская оружейная — после всех поставок кухни. Принятые посылки остаются в силе.</p>':'')+'<div id="regularContractsBook" class="regular-contracts"></div>',{wide:true,activity:'background',kind:'book'});
     refreshOpenBook();
   }
   function updateBoard(){
@@ -193,7 +203,7 @@ const Contracts=(()=>{
       const c=contracts[key],o=current(key),leaf=document.createElement('article');board.append(leaf);
       leaf.className='contract-offer-leaf quest-sheet';leaf.dataset.contractKey=key;leaf.dataset.contractState=c.offerState;
       leaf.dataset.questRarity='unique';
-      leaf.innerHTML='<span class="agreement-leaf-kind">ДОГОВОРЁННОСТЬ · 3 ПОСЫЛКИ</span>'+progressHtml(c)+(o&&typeof parcelContents==='function'?parcelContents(o):'<h3>'+def.title+'</h3><p class="quest-recipient">Кому: <b>'+customers[def.customer][0]+'</b></p>'+recipeHtml(def)+'<strong class="quest-price">Оплата: '+def.reward+' монет</strong>')+'<small class="agreement-leaf-info">'+(!c.signed?'Предложение · '+total(def)+' вещей':o?o.packed.length+'/'+total(o)+' в посылке':'Следующая через '+Math.max(0,Math.ceil(c.nextAt-state.story.elapsed))+' с')+'</small><small class="agreement-leaf-compact">'+(!c.signed?total(def)+' вещей · '+def.reward:o?o.packed.length+'/'+total(o)+' · '+o.reward:'Повтор через '+Math.max(0,Math.ceil(c.nextAt-state.story.elapsed))+' с')+'</small>';
+      leaf.innerHTML='<span class="agreement-leaf-kind">ДОГОВОРЁННОСТЬ · '+seriesLabel(key,c)+'</span>'+progressHtml(c)+(o&&typeof parcelContents==='function'?parcelContents(o):'<h3>'+def.title+'</h3><p class="quest-recipient">Кому: <b>'+customers[def.customer][0]+'</b></p>'+recipeHtml(def)+'<strong class="quest-price">Оплата: '+def.reward+' монет</strong>')+'<small class="agreement-leaf-info">'+(!c.signed?'Предложение · '+total(def)+' вещей':o?o.packed.length+'/'+total(o)+' в посылке':'Следующая через '+Math.max(0,Math.ceil(c.nextAt-state.story.elapsed))+' с')+'</small><small class="agreement-leaf-compact">'+(!c.signed?total(def)+' вещей · '+def.reward:o?o.packed.length+'/'+total(o)+' · '+o.reward:'Повтор через '+Math.max(0,Math.ceil(c.nextAt-state.story.elapsed))+' с')+'</small>';
       if(o)addParcelActions(leaf,o);
       else if(!c.signed)button(leaf,'Посмотреть и договориться',()=>openOffer(key)).className='agreement-open-offer';
       else{
@@ -205,7 +215,7 @@ const Contracts=(()=>{
   }
   function setup(){
     button(document.querySelector('footer nav'),'Договорённости',openBook,'contractsNav').className='hidden';
-    const board=document.createElement('aside');board.id='contractOfferBoard';board.className='hidden';board.setAttribute('aria-label','Договорённости на три поставки');$('game').append(board);
+    const board=document.createElement('aside');board.id='contractOfferBoard';board.className='hidden';board.setAttribute('aria-label','Договорённости с клиентами');$('game').append(board);
     const station=button($('reception'),'',()=>openGoblinParcel(),'goblinStation');station.className='hidden';station.innerHTML='<img class="goblin-portrait" src="assets/goblin-grik-packer.png" alt="Грик, гоблин-комплектовщик"><strong>Грик</strong><span class="goblin-label"></span><span class="goblin-progress"><i></i></span>';
     const work=button($('work'),'',()=>openGoblinParcel(),'goblinWorkStatus');work.className='hidden';work.innerHTML='<span></span><i></i>';
   }

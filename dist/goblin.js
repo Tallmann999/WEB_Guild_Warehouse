@@ -3,7 +3,7 @@
 // Reservations and movements refer to the original inventory instances. A parcel
 // changes hands in one synchronous transaction; animation never owns its stock.
 const Goblin = (()=>{
-  const VERSION=2,HIRE_COST=240,OFFER_GOLD=800,DELIVERY_FEE=3,ITEM_SECONDS=2,DISPATCH_SECONDS=3;
+  const VERSION=2,HIRE_COST=240,OFFER_GOLD=600,DELIVERY_FEE=3,ITEM_SECONDS=2,DISPATCH_SECONDS=3;
   let needsRefresh=false;
   const number=(value,fallback=0)=>Number.isFinite(Number(value))?Math.max(0,Number(value)):fallback;
   const orders=()=>state.orders||[];

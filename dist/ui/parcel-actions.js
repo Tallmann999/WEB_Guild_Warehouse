@@ -41,7 +41,7 @@ function parcelReceipt(origin){
 }
 function updateParcelReceipt(receipt,o){
   if(!receipt||!o.regularKey)return;
-  const completed=Math.min(3,state.story?.regularContracts?.[o.regularKey]?.deliveries||0);
+  const c=state.story?.regularContracts?.[o.regularKey],completed=Math.min(c?.seriesLimit||3,c?.deliveries||0);
   receipt.querySelectorAll('.agreement-delivery').forEach((square,index)=>{square.classList.toggle('checked',index<completed);square.textContent=index<completed?'✓':'';});
 }
 function automaticParcelFeedback(o,amount){

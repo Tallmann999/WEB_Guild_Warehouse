@@ -21,6 +21,11 @@ for(const stage of ['derelict','bare-walls','guild-furnished']){
   for(const time of ['day','night'])ASSETS['environment.reception-'+stage+'-'+time]='assets/New Sprites/backgrounds/'+stage+'-'+time+'.png';
   ASSETS['prop.reception-'+stage+'-counter']='assets/New Sprites/counters/'+stage+'-counter.png';
 }
+for(const stage of [1,2,3]){
+  ASSETS['environment.tower-stage-'+stage]='assets/New Sprites/Mage Tower/backgrounds/stage-'+stage+'.png';
+  ASSETS['prop.tower-counter-'+stage]='assets/New Sprites/Mage Tower/counters/stage-'+stage+'.png';
+}
+for(const name of ['orb-dusty','orb-clean','machine'])ASSETS['prop.tower-'+name]='assets/New Sprites/Mage Tower/props/'+name+'.png';
 const raw=['s1_19','s3_0','s3_1','s3_2','s3_3','s3_5','s3_6','s3_7','s4_0','s4_1','s4_3','s4_5','s10_2','s10_3',
   's6_7','s6_4','s6_5','s6_14','s6_10','s6_12','s7_0','s7_1','s7_2','s7_3','s7_5','s7_6','s8_0','s8_1','s8_2','s8_3','s8_4','s8_5',
   's9_0','s9_1','s9_2','s9_3','s9_4','s9_5','s9_6','s9_7','s9_8','s9_9','s9_10','s9_14'];

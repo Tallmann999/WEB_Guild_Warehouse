@@ -83,6 +83,7 @@ const Restoration=(()=>{
     s.nextVisit=0;s.forceSupplier=true;state.visitorCooldown=0;
     if(second){s.secondDayActive=false;s.secondDayEndPending=false;s.secondDayComplete=true;}
     delete s.restoration;delete s.restorationMorning;returnToReception();
+    if(typeof RoyalProgress!=='undefined')RoyalProgress.onUpgrade(second?'furnish':'clean');
     lockScene(false);update();render();save();
     toast(second?'Лавка обновлена: стеллажи, уютный уголок и вывеска гильдии. Начинается третий день.':'Пыль и паутина убраны, окно починено. Начинается второй день.');
   }

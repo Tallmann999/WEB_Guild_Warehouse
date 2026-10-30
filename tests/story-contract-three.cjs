@@ -1,6 +1,6 @@
 'use strict';
 
-// Isolated browser storage: real sales close a three-shipment agreement while
+// Isolated browser storage: real sales close a two-shipment kitchen agreement while
 // older accepted parcels and their original inventory survive migration.
 const {chromium}=require('C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const assert=require('node:assert/strict');
@@ -10,7 +10,7 @@ async function fixture(p){
   return p.evaluate(()=>{
     cancelDrag();forceCloseModal();BagPour.clear();state=freshState();
     Object.assign(state,{started:true,day:4,gold:500,screen:'reception',orders:[],order:null,orderUid:0,offers:[],bag:[],unknownTray:[],tutorial:{active:false},city:{version:1,towerOwned:true,towerPaid:1000}});
-    state.story={version:1,letterRead:true,inheritedOpened:true,firstPaid:true,restored:true,firstDayFlowVersion:2,firstDayComplete:true,firstDayPurchases:2,firstDayDeliveries:2,secondDayFlowVersion:1,secondDayActive:false,dwarfEncounterSeen:true,goblinEncounterSeen:true,completedB2:true,completedB3:true,manualAfterDwarf:0,elapsed:20,nextVisit:99999};
+    state.story={version:1,letterRead:true,inheritedOpened:true,firstPaid:true,restored:true,firstDayFlowVersion:2,firstDayComplete:true,firstDayPurchases:2,firstDayDeliveries:2,secondDayFlowVersion:1,secondDayActive:false,dwarfEncounterSeen:true,goblinEncounterSeen:true,completedB2:true,completedB3:true,manualAfterDwarf:0,elapsed:20,nextVisit:99999,royalProgress:{notified:true}};
     state.story.guild={version:1,phase:'complete',founded:true,name:'Проверка серии',draftName:'Проверка серии'};
     state.dwarf={hired:true,enabled:false,batches:[]};state.goblin={hired:true,enabled:false};state.visitorCooldown=99999;
     state.stock=Array.from({length:3},()=>[38,38,31,31,32,32]).flat().map(type=>{const x=makeItem(type);x.unknown=false;return x;});
@@ -32,18 +32,18 @@ async function packCurrent(p){
   const browser=await chromium.launch({channel:'msedge',headless:true});
   try{
     const p=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];p.setDefaultTimeout(8000);p.on('pageerror',e=>errors.push(e.message));await p.goto(BASE);
-    const initial=await fixture(p);assert.equal(await p.evaluate(()=>Contracts.signRegular('chef')),true);await p.evaluate(()=>render());
-    assert.equal(await p.locator(leaf+' .agreement-delivery').count(),3);assert.equal(await p.locator(leaf+' .checked').count(),0);
+    await p.waitForFunction(()=>LootkeeperEngine?.ready);await p.evaluate(()=>LootkeeperEngine.bridge.step=()=>{});const initial=await fixture(p);assert.equal(await p.evaluate(()=>Contracts.signRegular('chef')),true);await p.evaluate(()=>render());
+    assert.equal(await p.locator(leaf+' .agreement-delivery').count(),2);assert.equal(await p.locator(leaf+' .checked').count(),0);
     assert.equal(await p.locator('#contractOfferBoard').textContent().then(x=>x.includes('СРОЧНО')),false);
     const sold=[];
-    for(let delivery=1;delivery<=3;delivery++){
+    for(let delivery=1;delivery<=2;delivery++){
       const order=await packCurrent(p);sold.push(...order.packed.map(x=>x.uid));await p.locator('#ship').click();
       assert.equal(await p.evaluate(()=>state.gold),initial.gold+delivery*200,'Only a real shipment credits its 200 coins');
       assert.equal(await p.evaluate(()=>state.story.regularContracts.chef.deliveries),delivery);
       assert.deepEqual(await p.evaluate(()=>owned().map(x=>x.uid).sort((a,b)=>a-b)),initial.uids.filter(uid=>!sold.includes(uid)));
       await p.evaluate(o=>{Contracts.onDelivery(o);render();},order);
       assert.equal(await p.evaluate(()=>state.story.regularContracts.chef.deliveries),delivery,'Repeated notification cannot add a check');
-      if(delivery<3){
+      if(delivery<2){
         assert.equal(await p.locator(leaf+' .agreement-delivery.checked').count(),delivery);
         await p.evaluate(()=>{state.story.elapsed+=13;Contracts.sync();render();save();});
         assert.ok(await p.evaluate(()=>Contracts.current('chef')));
@@ -51,12 +51,12 @@ async function packCurrent(p){
     }
     assert.equal(await p.locator(leaf).count(),0,'The finished agreement disappears');
     await p.evaluate(()=>{state.story.elapsed+=100;Contracts.sync();render();save();});
-    assert.equal(await p.evaluate(()=>Contracts.current('chef')||null),null,'No fourth parcel is generated');
+    assert.equal(await p.evaluate(()=>Contracts.current('chef')||null),null,'No third parcel is generated');
     assert.equal(await p.evaluate(()=>Contracts.signRegular('chef')),false,'The completed series is not signed again');
     await p.reload();await p.locator('#loadGame').click();
-    assert.equal(await p.evaluate(()=>state.story.regularContracts.chef.deliveries),3);assert.equal(await p.locator(leaf).count(),0);
+    assert.equal(await p.evaluate(()=>state.story.regularContracts.chef.deliveries),2);assert.equal(await p.locator(leaf).count(),0);
     assert.equal(await p.evaluate(()=>Contracts.current('chef')||null),null);
-    console.log('PASS: three actual shipments, original uid consumption, three checks, one-time credits, terminal reload.');
+    console.log('PASS: two actual kitchen shipments, original uid consumption, two checks, one-time credits, terminal reload.');
 
     await fixture(p);const legacy=await p.evaluate(()=>{
       Contracts.signRegular('chef');const c=state.story.regularContracts.chef,o=Contracts.current('chef');
@@ -71,7 +71,7 @@ async function packCurrent(p){
     assert.deepEqual(await p.evaluate(()=>Contracts.current('chef').reservedUids),legacy.reserved);
     assert.equal(await p.evaluate(()=>state.gold),legacy.gold);assert.equal(await p.evaluate(()=>state.goblin.enabled||state.dwarf.enabled),false);
     assert.equal(await p.locator(leaf).count(),1,'An older accepted parcel stays accessible after the historical series limit');
-    assert.equal(await p.locator(leaf+' .agreement-delivery.checked').count(),3);
+    assert.equal(await p.locator(leaf+' .agreement-delivery.checked').count(),2);
     const last=await packCurrent(p);await p.locator('#ship').click();await p.evaluate(()=>{state.story.elapsed+=100;Contracts.sync();render();save();});
     assert.equal(await p.evaluate(()=>state.gold),legacy.gold+200);assert.equal(await p.evaluate(()=>state.story.regularContracts.chef.deliveries),8);
     assert.equal(await p.evaluate(()=>Contracts.current('chef')||null),null);assert.equal(await p.locator(leaf).count(),0);

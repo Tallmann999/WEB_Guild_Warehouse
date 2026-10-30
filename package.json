@@ -24,6 +24,7 @@
     "test:parallel-contracts": "node tests/story-parallel-contracts.cjs",
     "test:contract-book": "node tests/story-contract-book-live.cjs",
     "test:contracts": "node tests/story-contract-three.cjs",
-    "test:server": "node tests/local-server.cjs"
+    "test:server": "node tests/local-server.cjs",
+    "test:revisions": "node tests/playtest-revisions-20261030.cjs"
   }
 }

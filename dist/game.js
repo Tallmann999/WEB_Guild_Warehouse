@@ -11,7 +11,7 @@ const SAVE_KEY = 'guild-warehouse-playtest-1';
 const rankNames = ['Малая лавка','Надёжный поставщик','Гильдейский торговец','Купеческий дом','Известная фактория','Королевский поставщик','Легенда гильдии'];
 let state = freshState();
 let scale=1, drag=null, depth=100, suppressDropClick=false, toastTimer, modalCleanup=null, previousFocus=null, modalLocked=false;
-let audioContext=null, last=performance.now(), saveClock=0, recognitionFeedback=null;
+let audioContext=null, last=performance.now(), saveClock=0, hudClock=0, recognitionFeedback=null;
 let modalResumePaused=false, recognitionSubjectUid=null, backgroundDialogSignature='', parcelAutomationView=null;
 
 function freshState(){return {version:1,day:1,seconds:CONFIG.daySeconds,started:false,ended:false,screen:'reception',mode:'sort',gold:CONFIG.startingGold,rep:0,stock:[],junk:[],bag:[],offers:[],schedule:[],order:null,collection:[],upgrade:false,uid:0,selected:null,activeCat:null,inspectCat:null,targetCat:0,paused:false,autoSorting:false,muted:true,dayIncome:0,daySpent:0,daySorted:0,dayErrors:0,dayOrders:0,totalOrders:0,dayBought:0,combo:0};}
@@ -180,6 +180,25 @@ function pageTasks(direction){
 }
 function taskRailEmpty(){return !$('orderBoard')||$('orderBoard').classList.contains('hidden')&&$('contractOfferBoard').classList.contains('hidden');}
 function beep(bad=false){if(state.muted)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const o=audioContext.createOscillator(),g=audioContext.createGain();o.connect(g);g.connect(audioContext.destination);o.frequency.value=bad?150:560;g.gain.setValueAtTime(.035,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+.12);o.start();o.stop(audioContext.currentTime+.13);}catch{}}
+// Short original brass fanfare, scheduled once per information window. The
+// existing sound switch is authoritative; no external recordings or autoplay.
+function playUpgradeFanfare(){
+  if(state.muted)return false;
+  try{
+    audioContext??=new(window.AudioContext||window.webkitAudioContext)();
+    if(audioContext.state==='suspended'&&!navigator.userActivation?.hasBeenActive)return false;
+    audioContext.resume().catch(()=>{});
+    const start=audioContext.currentTime+.025;
+    for(const [offset,frequency,duration]of [[0,523.25,.14],[.16,659.25,.14],[.32,783.99,.18],[.54,1046.5,.65]]){
+      const tone=audioContext.createOscillator(),filter=audioContext.createBiquadFilter(),gain=audioContext.createGain();
+      tone.type='sawtooth';tone.frequency.value=frequency;filter.type='lowpass';filter.frequency.value=2300;filter.Q.value=.7;
+      tone.connect(filter);filter.connect(gain);gain.connect(audioContext.destination);
+      const at=start+offset;gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(.055,at+.025);gain.gain.exponentialRampToValueAtTime(.035,at+.08);gain.gain.exponentialRampToValueAtTime(.0001,at+duration);
+      tone.start(at);tone.stop(at+duration+.02);tone.onended=()=>{tone.disconnect();filter.disconnect();gain.disconnect();};
+    }
+    return true;
+  }catch{return false;}
+}
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2500);}
 function showOrderReward(amount,promoted){
   $('orderReward')?.remove();
@@ -911,7 +930,10 @@ function tick(now){
     if(BagPour.active())BagPour.advance(dt);
     else if(Story.enabled())Story.advance(dt);
     else if(!state.tutorial?.active){state.seconds=Math.max(0,state.seconds-dt*(state.screen==='work'?CONFIG.workTimeRate:1));advanceVisitorGap(dt);tickArrivals();advanceReadyVisitor(dt);}
-    updateHud();saveClock+=dt;if(saveClock>=5){saveClock=0;save();}
+    // Worker motion stays at frame rate. Text, books and status layout need
+    // only ten updates per second; actions still refresh immediately.
+    hudClock+=dt;if(hudClock>=.1){hudClock%=.1;updateHud();}
+    saveClock+=dt;if(saveClock>=5){saveClock=0;save();}
   }
   tutorialFrame();
 }

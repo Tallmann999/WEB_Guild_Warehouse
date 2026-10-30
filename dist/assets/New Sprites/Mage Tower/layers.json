@@ -3,7 +3,7 @@
     "width": 1536,
     "height": 1024
   },
-  "installed": false,
+  "installed": true,
   "counter": {
     "x": -192,
     "y": 735,
@@ -43,5 +43,6 @@
       "orb": "props/orb-clean.png",
       "machine": "props/machine.png"
     }
-  ]
+  ],
+  "stageSource": "story.shopRestorationStage + 1"
 }

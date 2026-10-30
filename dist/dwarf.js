@@ -56,7 +56,10 @@ const Dwarf = (()=>{
     d.hired=true;d.enabled=true;d.hiredAt=state.story.elapsed||0;d.spent+=HIRE_COST;d.job=null;
     if(typeof showGoldSpend==='function')showGoldSpend(HIRE_COST);
     // Only the loose workbench is adopted; stock, offers and partial parcels stay intact.
-    register(state.bag);updateHud();save();return true;
+    register(state.bag);
+    state.story.borinIntroduction={phase:state.bag.length?'sorting':'supply',uids:state.bag.map(x=>x.uid)};
+    state.story.nextVisit=0;
+    updateHud();save();return true;
   }
   function setEnabled(value){const d=ensure();if(!d||!d.hired)return false;d.enabled=!!value;updateVisual();save();return true;}
   function release(uid){

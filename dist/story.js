@@ -59,6 +59,12 @@ const Story = (()=>{
       s.earlyVisitIndex=index;s.earlyVisitVersion=1;
     }
     if(s.earlyVisitVersion===1)s.earlyVisitIndex=((Math.floor(Number(s.earlyVisitIndex)||0)%EARLY_VISITS.length)+EARLY_VISITS.length)%EARLY_VISITS.length;
+    // Only unpaid ordinary alchemist parcels change price. Never rewrite a
+    // completed receipt or replace a partially packed original order.
+    for(const o of new Set([...(state.orders||[]),state.order].filter(Boolean))){
+      if(o.regularKey||o.title!=='Запасы для алхимика'||o.delivered||o.alchemyParcelRewardVersion===1||state.goblin?.receipts?.some(r=>r.orderId===o.id))continue;
+      o.reward=110;o.originalReward=110;o.alchemyParcelRewardVersion=1;
+    }
     state.unknownTray??=[];state.orders??=[];state.schedule=[];state.orderSchedule=[];state.nextBagOrder=false;
     state.timingVersion=2;state.lootVersion=1;state.queueVersion=1;state.arrivalPacingVersion=3;Contracts.ensure();Restoration.ensure();if(typeof Automation!=='undefined')Automation.ensure();
     return s;
@@ -90,7 +96,7 @@ const Story = (()=>{
   }
   function secondDay(){return !!state.story?.secondDayActive&&state.day===2;}
   function earlyTrade(){return state.day>=2&&!state.city?.towerOwned;}
-  function usesVisitRhythm(){return state.day>=3&&earlyTrade();}
+  function usesVisitRhythm(){return state.day>=5||state.day>=3&&earlyTrade();}
   function recordVisit(kind){
     const s=state.story;
     // Exceptional cash/stock recovery does not consume the waiting slot.
@@ -100,6 +106,7 @@ const Story = (()=>{
     const s=state.story,gate=s?.sortingGate;if(!gate)return false;
     if(gate.uids.some(uid=>state.bag.some(x=>x.uid===uid)))return false;
     if(gate.day===2)s.secondDaySorted=Math.max(s.secondDaySorted||0,gate.ordinal||0);
+    if(s.borinIntroduction?.phase==='sorting')s.borinIntroduction.phase='complete';
     delete s.sortingGate;s.nextVisit=VISIT_SECONDS;state.visitorCooldown=VISIT_SECONDS;
     state.visitorGapPending=true;state.visitorIdleReady=true;save();return true;
   }
@@ -199,7 +206,7 @@ const Story = (()=>{
       customer=chosen===equipment?1:chosen===chef?4:chosen===alchemy?0:3;title=customer===1?'Снаряжение для кузницы':customer===4?'Припасы для кухни':customer===3?'Припасы для постояльцев':'Запасы для алхимика';
       description=customer===1?'Перекую старое снаряжение для нового похода. Приму оружие, броню и полезную оснастку из ваших запасов.':customer===4?'Готовлю ужин для горожан. Соберите продукты из сегодняшних поставок.':customer===3?'Мои постояльцы собираются в поход. Возьму разные припасы и снаряжение из вашего запаса.':'Для новой партии зелий нужны трофеи, травы и компоненты из ваших запасов.';
     }
-    const active=state.order,reward=first?40:state.dwarf?.hired?90:60;
+    const active=state.order,reward=first?40:title==='Запасы для алхимика'?110:state.dwarf?.hired?90:60;
     const order={id:state.orderUid=(state.orderUid||0)+1,recipe,packed:[],accepted:false,customer,reward,originalReward:reward,createdDay:state.day,carried:false,title,description,storyOrder:true,arrivalSerial:state.arrivalSerial=(state.arrivalSerial||0)+1};
     state.orders.push(order);state.order=keepSelection&&active?active:order;s.ordersCreated=(s.ordersCreated||0)+1;state.dayOrdersCreated=(state.dayOrdersCreated||0)+1;
     recordVisit('customer');
@@ -230,6 +237,15 @@ const Story = (()=>{
     }
     if(state.tutorial?.active||s.nextVisit>0)return;
     if(typeof Automation!=='undefined'&&Automation.recoverBeforeSupplier?.()){refreshArrivals();save();return;}
+    // Borin's first lesson is a real paid bag. The kitchen waits until its
+    // original items have actually left the sorting table.
+    if(s.borinIntroduction?.phase==='supply'){
+      if(state.offers.length||makeSupply()){
+        state.offers[0].openingDay=true;state.offers[0].borinIntroduction=true;
+        s.nextVisit=VISIT_SECONDS;refreshArrivals();save();
+      }
+      return;
+    }
     if(Contracts.activeOffer?.())return;
     if(Contracts.maybeOffer?.()){refreshArrivals();return;}
     if(secondDay()){
@@ -241,7 +257,8 @@ const Story = (()=>{
       }
       s.nextVisit=VISIT_SECONDS;if(changed){refreshArrivals();save();}return;
     }
-    if(s.goblinEncounterPending)return;
+    // An invitation waiting for a safe screen must not halt ordinary guests.
+    // Otherwise an unfinished manual parcel can wait forever for its supply.
     // Opening the new day brings a supplier to the front without deleting a
     // carried customer's order or any of the player's existing stock.
     if(s.forceSupplier&&state.bag.length<24){
@@ -304,6 +321,7 @@ const Story = (()=>{
     if(secondDay()){s.secondDayPurchases++;s.secondDaySupplyRun++;}
     else if(earlyTrade())s.earlySupplyRun++;
     s.sortingGate={uids:state.bag.map(x=>x.uid),day:state.day,ordinal:secondDay()?s.secondDayPurchases:s.firstDayPurchases};
+    if(offer.borinIntroduction||s.borinIntroduction?.phase==='supply')s.borinIntroduction={phase:'sorting',uids:state.bag.map(x=>x.uid)};
     if(offer.credit)s.supplierDebt=(s.supplierDebt||0)+offer.credit;
     s.nextVisit=VISIT_SECONDS;state.visitorCooldown=VISIT_SECONDS;Dwarf.onBagPurchased(offer.loot);
   }
@@ -338,7 +356,7 @@ const Story = (()=>{
     if(!state.dwarf?.hired)return ['ПЕРВЫЙ ПОМОЩНИК',Dwarf.unlocked()?'Нанять Борина за 120 монет':'Второй день · три поставки на посылку',Dwarf.unlocked()?'Борин ждёт решения в улучшениях. После найма он сразу начнёт разбирать поставки.':'После трёх разобранных мешков и первой выданной посылки придёт гном-сортировщик.'];
     if(!state.dwarf.enabled&&(!s.completedB2||state.goblin?.hired))return ['ПЕРВЫЙ ПОМОЩНИК','Включить автосортировку Борина','Откройте улучшения и поручите Борину разбор настоящей поставки.'];
     if(!s.completedB2)return ['РАБОТА ВДВОЁМ','Собрать посылку, пока работает Борин','Купите новую партию, а сами выполните ещё один заказ.'];
-    if(!state.goblin?.hired)return ['НОВЫЙ ПОМОЩНИК',Goblin.unlocked()?'Нанять Грика · 240 монет':'Накопить 800 монет для встречи с Гриком',Goblin.unlocked()?'Даже после отказа Грик ждёт в улучшениях. Найм за 240 откроет автоматизацию.':'Продолжайте обычную торговлю. При кассе 800 монет Грик предложит помощь независимо от дня. Найм стоит 240.'];
+    if(!state.goblin?.hired)return ['НОВЫЙ ПОМОЩНИК',Goblin.unlocked()?'Нанять Грика · 240 монет':'Накопить 600 монет для встречи с Гриком',Goblin.unlocked()?'Даже после отказа Грик ждёт в улучшениях. Найм за 240 откроет автоматизацию.':'Продолжайте обычную торговлю. При кассе 600 монет Грик предложит помощь независимо от дня. Найм стоит 240.'];
     if(!state.goblin.enabled)return ['НОВЫЙ ПОМОЩНИК','Включить работу Грика','В улучшениях включите Грика и явно поручите ему выбранную посылку. Остальные посылки остаются за вами.'];
     if(!s.completedB3)return ['НОВЫЙ ПОМОЩНИК','Передать обычную посылку Грику','Грик собирает первую посылку. На листке можно выбрать помощника или собрать самому, затем забрать оплату.'];
     if(!s.guild?.founded||s.guild.phase==='charter')return ['НАЧАЛО ГИЛЬДИИ','Основать свою гильдию','Выберите название, получите флаг и включите автоторговлю в окне гильдии.'];
@@ -463,7 +481,7 @@ const Story = (()=>{
   function afterLoad(){if(!enabled())return;ensure();Dwarf.ensure();Goblin.ensure();Goblin.reconcile();state.ended=false;render();if(!state.story.letterRead)letter();else{Restoration.afterLoad();if(!secondDayMilestones())goblinMilestones();}if(typeof Automation!=='undefined')Automation.afterLoad();if(typeof Guild!=='undefined')Guild.afterLoad();if(typeof Tower!=='undefined')Tower.afterLoad();if(typeof RoyalProgress!=='undefined')RoyalProgress.afterLoad();}
   function guide(){
     if(typeof BagPour!=='undefined'&&BagPour.active()){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}
-    const t=state.tutorial;if(!enabled()||!t?.active||!state.started){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}
+    const t=state.tutorial;if(!enabled()||!t?.active||!state.started){if(typeof StaffGuidance!=='undefined'&&StaffGuidance.guide())return;clearTutorialHighlight();$('tutorialGuide')?.remove();return;}
     if(!state.story.letterRead){clearTutorialHighlight();$('tutorialGuide')?.remove();return;}
     const modalOpen=!$('modal').classList.contains('hidden');$('autoSortButton').disabled=true;
     if(modalOpen){
